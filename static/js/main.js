@@ -493,6 +493,15 @@ function renderClasses(data){
                 html += `<button onclick="window.open('${pdfUrl}', '_blank')" class="pdf-btn">📄 ${escapeStr(shortName)}</button>`;
             });
         }
+        if(cls.classTest && cls.classTest.length > 0) {
+            let platform = localStorage.getItem('platform') || 'selectionway';
+            cls.classTest.forEach(test => {
+                let testName = test.name || test.title || test.series_name || "Quiz";
+                let shortName = testName.length > 30 ? testName.substring(0, 30) + "..." : testName;
+                let testId = test.id || test._id;
+                html += `<button onclick="window.open('/test/${testId}?platform=${platform}', '_blank')" class="pdf-btn" style="background:#8b5cf6; border-color:#8b5cf6;">📝 ${escapeStr(shortName)}</button>`;
+            });
+        }
         html += `</div></div>`;
     });
     html += `</div>`;
