@@ -652,7 +652,7 @@ function openVideoPlayer(recordings, defaultLink, title) {
         url: proxiedInitialUrl,
         autoplay: true,
         pip: true,
-        playbackRate: true,
+        playbackRate: false,
         fullscreen: true,
         fullscreenWeb: true,
         miniProgressBar: true,
