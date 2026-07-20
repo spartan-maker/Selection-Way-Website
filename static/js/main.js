@@ -487,8 +487,10 @@ function renderClasses(data){
                 <button onclick='openVideoPlayer(${JSON.stringify(cls.mp4Recordings || []).replace(/'/g, "&apos;")}, "${cls.class_link || ''}", "${escapeStr(cls.title)}")' style="width: 100%;">▶ Play Video</button>`;
         if(cls.classPdf && cls.classPdf.length > 0) {
             cls.classPdf.forEach(pdf=>{
-                let shortName = pdf.name ? (pdf.name.length > 30 ? pdf.name.substring(0, 30) + "..." : pdf.name) : "Class Notes";
-                html += `<button onclick="window.open('${pdf.url}', '_blank')" class="pdf-btn">📄 ${escapeStr(shortName)}</button>`;
+                let pdfName = pdf.name || pdf.title || "Class Notes";
+                let shortName = pdfName.length > 30 ? pdfName.substring(0, 30) + "..." : pdfName;
+                let pdfUrl = pdf.url || pdf.uploadPdf || "#";
+                html += `<button onclick="window.open('${pdfUrl}', '_blank')" class="pdf-btn">📄 ${escapeStr(shortName)}</button>`;
             });
         }
         html += `</div></div>`;
