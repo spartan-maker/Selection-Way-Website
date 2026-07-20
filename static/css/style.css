@@ -175,6 +175,7 @@
 
         /* ArtPlayer Overrides */
         #artplayer-container .art-video-player { font-family: 'Outfit', sans-serif !important; }
-        #artplayer-container .art-bottom { background: linear-gradient(transparent, rgba(0,0,0,0.3)) !important; }
+        #artplayer-container .art-bottom { background: transparent !important; }
+        #artplayer-container .art-mask { display: none !important; background: transparent !important; }
         #artplayer-container .art-control-progress .art-control-progress-inner .art-progress-played { background: #38bdf8 !important; }
         #artplayer-container .art-setting { backdrop-filter: blur(8px); }
