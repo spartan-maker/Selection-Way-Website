@@ -209,7 +209,9 @@ def get_course_details(course_id):
         url = f"{API_HOST}/courses/{course_id}?userId={USER_ID}"
         response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         return response.json().get("data", {})
-    except: return {}
+    except Exception as e:
+        logging.error(f"Error fetching course details {course_id}: {e}")
+        return {}
 
 @cached(api_cache)
 def fetch_and_merge_courses():
@@ -217,7 +219,9 @@ def fetch_and_merge_courses():
         api_url = f"{API_HOST}/courses/active?userId={USER_ID}"
         api_data = requests.get(api_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10).json().get("data", [])
         api_ids = [str(c.get("id")) for c in api_data if c.get("id")]
-    except: api_ids = []
+    except Exception as e:
+        logging.error(f"Error fetching active courses from API: {e}")
+        api_ids = []
             
     db_data = list(courses_collection.find({}, {"id": 1, "_id": 0}))
     db_ids = [str(c.get("id")) for c in db_data if c.get("id")]
@@ -235,7 +239,9 @@ def fetch_and_merge_courses():
 @login_required
 def courses():
     try: return jsonify(fetch_and_merge_courses())
-    except: return jsonify({"error": "Unable to load data"}), 502
+    except Exception as e:
+        logging.error(f"Error in /api/courses: {e}")
+        return jsonify({"error": "Unable to load data"}), 502
 
 @app.route("/api/course/<course_id>")
 @login_required
@@ -243,7 +249,9 @@ def topics(course_id):
     try:
         url = f"{API_HOST}/topic-and-section?courseId={course_id}&userId={USER_ID}"
         return jsonify(requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10).json().get("data", {}).get("topics", []))
-    except: return jsonify({"error": "Failed to fetch topics"}), 502
+    except Exception as e:
+        logging.error(f"Error fetching topics for course {course_id}: {e}")
+        return jsonify({"error": "Failed to fetch topics"}), 502
 
 @app.route("/api/classes/<course_id>/<topic_id>")
 @login_required
@@ -251,7 +259,9 @@ def classes(course_id, topic_id):
     try:
         url = f"{API_HOST}/topics/{topic_id}/classes?courseId={course_id}&userId={USER_ID}"
         return jsonify(requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10).json().get("data", {}).get("classes", []))
-    except: return jsonify({"error": "Failed to fetch classes"}), 502
+    except Exception as e:
+        logging.error(f"Error fetching classes for topic {topic_id}: {e}")
+        return jsonify({"error": "Failed to fetch classes"}), 502
     
 @app.route("/api/pdfs/<course_id>")
 @login_required
@@ -259,7 +269,9 @@ def course_pdfs(course_id):
     try:
         url = f"{API_HOST}/courses/{course_id}/pdfs?groupBy=topic&userId={USER_ID}"
         return jsonify(requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10).json().get("data", {}).get("topics", []))
-    except: return jsonify({"error": "Failed to fetch PDFs"}), 502
+    except Exception as e:
+        logging.error(f"Error fetching PDFs for course {course_id}: {e}")
+        return jsonify({"error": "Failed to fetch PDFs"}), 502
 
 @app.route("/api/mock-tests/<course_id>")
 @login_required
@@ -267,7 +279,9 @@ def mock_tests_list(course_id):
     try:
         url = f"https://selectionway.hranker.com/admin/api/getMongoCourseDataByTopic-v2/{course_id}/{USER_ID}"
         return jsonify(requests.get(url, headers={"User-Agent": random.choice(USER_AGENTS)}, timeout=10).json())
-    except: return jsonify({"error": "Failed to fetch mock tests"}), 502
+    except Exception as e:
+        logging.error(f"Error fetching mock tests for course {course_id}: {e}")
+        return jsonify({"error": "Failed to fetch mock tests"}), 502
 
 @app.route("/test/<test_id>")
 @login_required
