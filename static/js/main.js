@@ -550,8 +550,8 @@ function loadMockTests(courseId) {
     .catch(() => document.getElementById("content").innerHTML = "<h3 style='padding:20px'>Error loading mock tests.</h3>");
 }
 
-// --- VIDEO PLAYER LOGIC ---
-let currentVideoElement = null;
+// --- VIDEO PLAYER LOGIC (ArtPlayer) ---
+let currentArtPlayer = null;
 let currentActiveVideoUrl = "";
 
 function openVideoPlayer(recordings, defaultLink, title) {
@@ -618,141 +618,140 @@ function openVideoPlayer(recordings, defaultLink, title) {
     let isM3u8 = currentActiveVideoUrl.includes('.m3u8');
     let proxiedInitialUrl = getProxiedVideo(currentActiveVideoUrl);
 
-    let qualityButtons = '';
-    if (defaultLink) {
-        qualityButtons += `<button class="btn-sm ${currentActiveVideoUrl === defaultLink.trim() ? 'active' : ''}" onclick="changeVideoQuality('${defaultLink}', this)">Default</button>`;
+    // Build quality selector for mp4 recordings
+    let qualityOptions = [];
+    if (!isM3u8) {
+        if (defaultLink) {
+            qualityOptions.push({ html: 'Default', url: defaultLink.trim() });
+        }
+        safeRecordings.forEach(r => {
+            qualityOptions.push({ html: r.quality || 'Unknown', url: r.url.trim() });
+        });
     }
-    
-    safeRecordings.forEach(r => {
-        qualityButtons += `<button class="btn-sm ${currentActiveVideoUrl === r.url.trim() ? 'active' : ''}" onclick="changeVideoQuality('${r.url}', this)">${r.quality}</button>`;
-    });
-    
+
     let html = `
         <div class="video-modal-box" onclick="event.stopPropagation()">
             <div class="video-header">
                 <h3>${title || 'Class Recording'}</h3>
-                <button style="background:transparent; color:var(--text-muted); padding:0; font-size:1.8rem; cursor:pointer;" onclick="closeModal()">×</button>
-            </div>
-            <div class="video-wrapper">
-                <video id="custom-video-player" controls playsinline style="width: 100%; height: 100%;"></video>
-            </div>
-            <div class="video-controls-custom">
-                <div class="video-controls-group">
-                    <span>Speed:</span>
-                    ${[1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].map(s => 
-                        `<button class="btn-sm ${s === 1 ? 'active' : ''}" onclick="changePlaybackSpeed(${s}, this)">${s}x</button>`
-                    ).join('')}
-                    
-                    <button id="open-link-btn" class="btn-sm" onclick="window.open('${currentActiveVideoUrl}', '_blank')" style="margin-left: 8px; background: #22c55e; color: white; border-color: #22c55e;">↗ Open Link</button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button class="btn-sm" onclick="window.open('${currentActiveVideoUrl}', '_blank')" style="background: #22c55e; color: white; border-color: #22c55e;">↗ Open Link</button>
+                    <button style="background:transparent; color:var(--text-muted); padding:0; font-size:1.8rem; cursor:pointer; box-shadow:none;" onclick="closeModal()">&times;</button>
                 </div>
-                ${qualityButtons ? `<div class="video-controls-group"><span>Quality:</span>${qualityButtons}</div>` : ''}
             </div>
+            <div id="artplayer-container" style="width: 100%; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden;"></div>
         </div>
     `;
 
     const modal = document.getElementById("modal");
     modal.innerHTML = html;
     modal.style.display = "flex";
-    currentVideoElement = document.getElementById("custom-video-player");
 
-    if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
-        const hls = new Hls({
-            xhrSetup: function(xhr) {
-                xhr.withCredentials = false;
+    // Initialize ArtPlayer
+    let artConfig = {
+        container: '#artplayer-container',
+        url: proxiedInitialUrl,
+        autoplay: true,
+        pip: true,
+        playbackRate: true,
+        fullscreen: true,
+        fullscreenWeb: true,
+        miniProgressBar: true,
+        mutex: true,
+        hotkey: true,
+        setting: true,
+        theme: '#38bdf8',
+        volume: 1,
+        muted: false,
+        settings: [
+            {
+                html: 'Speed',
+                width: 200,
+                tooltip: '1x',
+                selector: [
+                    { html: '0.5x', value: 0.5 },
+                    { html: '0.75x', value: 0.75 },
+                    { html: '1x', value: 1, default: true },
+                    { html: '1.25x', value: 1.25 },
+                    { html: '1.5x', value: 1.5 },
+                    { html: '1.75x', value: 1.75 },
+                    { html: '2x', value: 2 },
+                    { html: '2.25x', value: 2.25 },
+                    { html: '2.5x', value: 2.5 },
+                    { html: '2.75x', value: 2.75 },
+                ],
+                onSelect: function(item) {
+                    if (currentArtPlayer) {
+                        currentArtPlayer.playbackRate = item.value;
+                    }
+                    return item.html;
+                },
+            },
+        ],
+        plugins: [],
+        customType: {},
+    };
+
+    // HLS integration
+    if (isM3u8) {
+        artConfig.type = 'm3u8';
+
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            artConfig.customType = {
+                m3u8: function(video, url, art) {
+                    const hls = new Hls({
+                        xhrSetup: function(xhr) {
+                            xhr.withCredentials = false;
+                        }
+                    });
+                    hls.loadSource(url);
+                    hls.attachMedia(video);
+                    art.hls = hls;
+                    art.on('destroy', () => hls.destroy());
+                }
+            };
+
+            // Add HLS quality control plugin
+            if (typeof artplayerPluginHlsControl !== 'undefined') {
+                artConfig.plugins.push(
+                    artplayerPluginHlsControl({
+                        quality: {
+                            control: true,
+                            setting: true,
+                        },
+                    })
+                );
             }
-        });
-        hls.loadSource(proxiedInitialUrl);
-        hls.attachMedia(currentVideoElement);
-        currentVideoElement.hls = hls;
-        
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            currentVideoElement.play().catch(e => console.log("Autoplay prevented by browser", e));
-        });
-        
-    } else if (isM3u8 && currentVideoElement.canPlayType('application/vnd.apple.mpegurl')) {
-        currentVideoElement.src = proxiedInitialUrl;
-        currentVideoElement.play().catch(e => console.log(e));
-    } else {
-        currentVideoElement.src = proxiedInitialUrl;
-        currentVideoElement.play().catch(e => console.log(e));
-    }
-}
-
-function changePlaybackSpeed(speed, btn) {
-    if(currentVideoElement) {
-        currentVideoElement.playbackRate = speed;
-    }
-    let siblings = btn.parentElement.querySelectorAll('.btn-sm');
-    siblings.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-}
-
-function changeVideoQuality(newUrl, btn) {
-    if(!currentVideoElement) return;
-
-    if (newUrl) {
-        newUrl = newUrl.trim();
-        if (!newUrl.startsWith('http')) {
-            newUrl = 'https://' + newUrl.replace(/^\/\//, '');
+        } else {
+            // iOS Safari native HLS fallback
+            artConfig.customType = {
+                m3u8: function(video, url) {
+                    video.src = url;
+                }
+            };
         }
     }
-    currentActiveVideoUrl = newUrl;
-    
-    let isM3u8 = currentActiveVideoUrl.includes('.m3u8');
-    let proxiedUrl = getProxiedVideo(currentActiveVideoUrl);
 
-    let currentTime = currentVideoElement.currentTime;
-    let isPaused = currentVideoElement.paused;
-    let currentSpeed = currentVideoElement.playbackRate;
-
-    if (currentVideoElement.hls) {
-        currentVideoElement.hls.destroy();
-        delete currentVideoElement.hls;
+    // MP4 quality switching (non-HLS)
+    if (!isM3u8 && qualityOptions.length > 1) {
+        artConfig.quality = qualityOptions.map((q, i) => ({
+            default: i === 0,
+            html: q.html,
+            url: getProxiedVideo(q.url),
+        }));
     }
 
-    if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
-        const hls = new Hls({
-            xhrSetup: function(xhr) {
-                xhr.withCredentials = false;
-            }
-        });
-        hls.loadSource(proxiedUrl);
-        hls.attachMedia(currentVideoElement);
-        currentVideoElement.hls = hls;
-        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            currentVideoElement.currentTime = currentTime;
-            currentVideoElement.playbackRate = currentSpeed;
-            if(!isPaused) currentVideoElement.play().catch(e => console.log(e));
-        });
-    } else {
-        currentVideoElement.src = proxiedUrl;
-        currentVideoElement.addEventListener('loadedmetadata', function restoreState() {
-            currentVideoElement.currentTime = currentTime;
-            currentVideoElement.playbackRate = currentSpeed;
-            if(!isPaused) currentVideoElement.play().catch(e => console.log(e));
-            currentVideoElement.removeEventListener('loadedmetadata', restoreState); 
-        }, { once: true });
+    if (currentArtPlayer) {
+        currentArtPlayer.destroy(false);
+        currentArtPlayer = null;
     }
 
-    let siblings = btn.parentElement.querySelectorAll('.btn-sm');
-    siblings.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    
-    const openLinkBtn = document.getElementById('open-link-btn');
-    if(openLinkBtn) {
-        openLinkBtn.setAttribute('onclick', `window.open('${currentActiveVideoUrl}', '_blank')`);
-    }
+    currentArtPlayer = new Artplayer(artConfig);
 }
+
 function closeModal() { 
-    if(currentVideoElement) {
-        currentVideoElement.pause();
-        if (currentVideoElement.hls) {
-            currentVideoElement.hls.destroy();
-            delete currentVideoElement.hls;
-        }
-        currentVideoElement.removeAttribute('src'); 
-        currentVideoElement.load();
-        currentVideoElement = null;
+    if (currentArtPlayer) {
+        currentArtPlayer.destroy(false);
+        currentArtPlayer = null;
     }
     const modal = document.getElementById("modal");
     modal.style.display = "none"; 
@@ -766,24 +765,14 @@ window.onclick = function(e) {
 }
 
 document.addEventListener('keydown', function(e) {
-    if (!currentVideoElement) return; 
+    if (!currentArtPlayer) return; 
     
     const modal = document.getElementById("modal");
     if (modal.style.display !== "flex") return;
 
-    if (e.key === 'ArrowLeft') {
+    if (e.key === 'Escape') {
         e.preventDefault();
-        currentVideoElement.currentTime -= 10;
-    } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        currentVideoElement.currentTime += 10;
-    } else if (e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault();
-        if (currentVideoElement.paused) {
-            currentVideoElement.play();
-        } else {
-            currentVideoElement.pause();
-        }
+        closeModal();
     }
 });
 
