@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Test</title>
+    
+    <script>
+        window.MathJax = { tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] }, startup: { typeset: false } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #f1f5f9; --bg-surface: #ffffff; --text-main: #1e293b; --text-muted: #64748b;
+            --border-light: #e2e8f0; --border-dark: #cbd5e1; --brand-dark: #0f172a; --brand-blue: #2563eb;
+            --brand-light: #eff6ff; --status-ans: #84cc16; --status-notans: #ea580c; --status-notvis: #e2e8f0;
+            --status-mark: #8b5cf6; --status-correct: #22c55e; --status-wrong: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        .hidden { display: none !important; }
+        .flex { display: flex; } .flex-col { display: flex; flex-direction: column; }
+        .items-center { align-items: center; } .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; } .gap-4 { gap: 1rem; } .w-full { width: 100%; }
+        
+        button { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-primary { background-color: var(--brand-dark); color: white; }
+        .btn-outline-blue { background: transparent; border: 1px solid var(--brand-blue); color: var(--brand-blue); }
+        .btn-outline-red { background: transparent; border: 1px solid var(--status-wrong); color: var(--status-wrong); }
+        .btn-light { background-color: #f8fafc; border: 1px solid var(--border-dark); color: var(--text-main); }
+        .btn-orange { background-color: #f59e0b; color: white; }
+
+        #instruction-screen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #f4f4f4; z-index: 50; overflow-y: auto; display: flex; align-items: flex-start; justify-content: center; 
+            padding: 2rem 1rem;
+        }
+        .inst-card {
+            background: var(--bg-surface); border-radius: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%; max-width: 900px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid var(--border-dark);
+        }
+        .inst-header { 
+            padding: 1rem 2rem; background: #232f3e; color: white;
+            display: flex; align-items: center; gap: 1rem; font-weight: 600; font-size: 1.2rem; 
+        }
+        .inst-content { padding: 2rem; flex: 1; color: #333; font-family: Arial, sans-serif; }
+        .inst-content h3 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.8rem; text-decoration: underline; color: #d32f2f; }
+        .inst-content p, .inst-content li { line-height: 1.6; font-size: 0.95rem; margin-bottom: 0.6rem; }
+        .inst-content ol { margin-left: 1.5rem; }
+        .inst-content ul { list-style: none; padding-left: 0; margin-top: 1rem; }
+        
+        .palette-instruction { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.8rem; font-size: 0.95rem; }
+        .palette-instruction .shape { width: 30px; height: 30px; flex-shrink: 0; font-size: 0.85rem; }
+
+        .name-setup { margin-top: 2rem; padding: 1.5rem; background: #f8fafc; border: 1px solid var(--border-dark); border-radius: 6px; }
+        .name-setup label { font-weight: bold; font-size: 1rem; display: block; margin-bottom: 0.5rem;}
+        .name-setup input { width: 100%; max-width: 400px; padding: 0.6rem 1rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; outline: none; }
+        .name-setup input:focus { border-color: #232f3e; }
+        
+        .notice-box { margin-top: 15px; padding: 10px 15px; background: #e3f2fd; border-left: 4px solid #1976d2; border-radius: 4px; font-size: 0.9rem; }
+        
+        .inst-footer { padding: 1rem 2rem; border-top: 1px solid var(--border-light); background: #f1f1f1; display: flex; justify-content: space-between; align-items: center; }
+        .checkbox-container { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; font-weight: bold; cursor: pointer; }
+        .checkbox-container input { transform: scale(1.2); cursor: pointer; }
+
+        .app-header { height: 50px; background: var(--bg-surface); border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; padding: 0 1rem; flex-shrink: 0; }
+        .timer-block { display: flex; flex-direction: column; align-items: center; }
+        .timer-digits { display: flex; gap: 3px; font-family: monospace; font-weight: bold; font-size: 1rem; align-items: center; }
+        .t-box { background: #475569; color: white; padding: 2px 5px; border-radius: 3px; }
+        .section-bar { height: 40px; background: var(--bg-surface); display: flex; align-items: flex-end; padding: 0 1rem; border-bottom: 1px solid var(--border-light); }
+        .sec-tab { background: var(--brand-dark); color: white; padding: 8px 16px; border-radius: 4px 4px 0 0; font-size: 0.85rem; font-weight: 600; }
+
+        .main-body { display: flex; flex: 1; overflow: hidden; }
+        .q-pane { flex: 1; display: flex; flex-direction: column; background: var(--bg-surface); }
+        .q-toolbar { padding: 0.8rem 1.5rem; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+        .q-scroll { flex: 1; overflow-y: auto; padding: 2rem; }
+        
+        .q-text { font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.5rem; }
+        .opt-row { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; border: 1px solid var(--border-dark); border-radius: 6px; cursor: pointer; transition: 0.1s; margin-bottom:0.8rem; }
+        .opt-row.selected { border-color: var(--brand-blue); background: var(--brand-light); }
+        .opt-row.is-correct { border-color: var(--status-correct) !important; background: #f0fdf4 !important; }
+        .opt-row.is-wrong { border-color: var(--status-wrong) !important; background: #fef2f2 !important; }
+        .badge-original { background: #e2e8f0; color: #475569; font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-left: 10px; }
+        .solution-box { margin-top: 1rem; padding: 1.5rem; border: 1px solid var(--border-dark); border-left: 4px solid var(--status-correct); border-radius: 4px; background: #f8fafc; line-height: 1.6; }
+        .review-nav { padding: 1rem 1.5rem; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); }
+
+        .sidebar { width: 340px; background: #e2e8f0; display: flex; flex-direction: column; border-left: 1px solid var(--border-dark); flex-shrink: 0; }
+        .user-card { padding: 0.8rem 1rem; background: #dbeafe; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-dark); }
+        .legend-area, .review-stats { padding: 1rem; background: var(--bg-surface); border-bottom: 1px solid var(--border-dark); font-size: 0.75rem; font-weight: 500; }
+        .legend-area { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+        .review-stats { display: flex; justify-content: space-between; }
+        
+        .shape { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .s-ans { background: var(--status-ans); clip-path: polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%); }
+        .s-notans { background: var(--status-notans); clip-path: polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%); }
+        .s-notvis { background: var(--status-notvis); color: var(--text-main); border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: none; }
+        .s-mark { background: var(--status-mark); border-radius: 50%; }
+        .s-ansmark { background: var(--status-mark); border-radius: 50%; position: relative; }
+        .s-ansmark::after { content: ''; position: absolute; bottom: 0; right: 0; width: 8px; height: 8px; background: var(--status-ans); border-radius: 50%; border: 1px solid white; }
+        
+        .s-correct-review { background: var(--status-correct) !important; color: white !important; border-radius: 4px !important; border: none !important; clip-path: none !important; }
+        .s-wrong-review { background: var(--status-wrong) !important; color: white !important; border-radius: 4px !important; border: none !important; clip-path: none !important; }
+        .s-unatt-review { background: #cbd5e1 !important; color: #333 !important; border-radius: 4px !important; border: 1px solid #94a3b8 !important; clip-path: none !important; box-shadow: none !important; }
+
+        .pal-grid { padding: 1rem; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; overflow-y: auto; flex: 1; align-content: start; }
+        .pal-btn { padding: 0; border: none; cursor: pointer; outline: none; margin:0 auto; }
+        .pal-btn.active-q { box-shadow: 0 0 0 2px #0f172a; border-radius: 4px; }
+        .sidebar-actions { padding: 1rem; background: #e2e8f0; border-top: 1px solid var(--border-dark); display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .modal-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .modal-box { background: var(--bg-surface); border-radius: 8px; width: 90%; max-width: 850px; overflow: hidden; }
+        .modal-head { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; font-weight: 600; font-size: 1.1rem; }
+        .modal-body { padding: 1.5rem; overflow-x: auto; }
+        .sum-table { width: 100%; border-collapse: collapse; text-align: center; }
+        .sum-table th, .sum-table td { padding: 1rem; border-bottom: 1px solid var(--border-light); }
+        .modal-foot { padding: 1rem 1.5rem; border-top: 1px solid var(--border-light); text-align: right; background: #f8fafc; }
+        .analysis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; text-align: center; }
+        .a-card { background: var(--bg-body); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-light); }
+        .a-card h2 { font-size: 2rem; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <script>
+        const testData = {{ test_data | tojson | safe }};
+        const prevAttempt = {{ prev_attempt | tojson | safe if prev_attempt else 'null' }};
+    </script>
+    
+    <div id="instruction-screen">
+        <div class="inst-card">
+            <div class="inst-header">
+                <img src="https://www.selectionway.com/next_images/logo.png" alt="Logo" style="width: 35px; height: 35px; border-radius: 4px; background: white; padding: 2px;">
+                Please read the instructions carefully
+            </div>
+            
+            <div class="inst-content">
+                <h3>General Instructions:</h3>
+                <ol>
+                    <li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time available for you to complete the examination. When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li>
+                    <li>The Question Palette displayed on the right side of screen will show the status of each question using one of the following symbols:
+                        <ul>
+                            <li class="palette-instruction">
+                                <div class="shape s-notvis">1</div> 
+                                <span>You have not visited the question yet.</span>
+                            </li>
+                            <li class="palette-instruction">
+                                <div class="shape s-notans">2</div> 
+                                <span>You have not answered the question.</span>
+                            </li>
+                            <li class="palette-instruction">
+                                <div class="shape s-ans">3</div> 
+                                <span>You have answered the question.</span>
+                            </li>
+                            <li class="palette-instruction">
+                                <div class="shape s-mark">4</div> 
+                                <span>You have NOT answered the question, but have marked the question for review.</span>
+                            </li>
+                            <li class="palette-instruction">
+                                <div class="shape s-ansmark">5</div> 
+                                <span>The question(s) "Answered and Marked for Review" will be considered for evaluation.</span>
+                            </li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>Navigating to a Question:</h3>
+                <ol start="3">
+                    <li>To answer a question, do the following:
+                        <ul style="list-style-type: lower-alpha; padding-left: 1.5rem;">
+                            <li>Click on the question number in the Question Palette at the right of your screen to go to that numbered question directly. Note that using this option does NOT save your answer to the current question.</li>
+                            <li>Click on <strong>Save & Next</strong> to save your answer for the current question and then go to the next question.</li>
+                            <li>Click on <strong>Mark for Review & Next</strong> to save your answer for the current question, mark it for review, and then go to the next question.</li>
+                        </ul>
+                    </li>
+                </ol>
+
+                <h3>Answering a Question:</h3>
+                <ol start="4">
+                    <li>Procedure for answering a multiple choice type question:
+                        <ul style="list-style-type: lower-alpha; padding-left: 1.5rem;">
+                            <li>To select your answer, click on the button of one of the options.</li>
+                            <li>To deselect your chosen answer, click on the chosen option again or click on <strong>Clear Response</strong>.</li>
+                            <li>To change your chosen answer, click on the button of another option.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Anti-Cheat Active:</strong> Your exam will auto-submit if you switch tabs or minimize the window too many times. Copying text or right-clicking is strictly disabled.</li>
+                </ol>
+                
+                <div class="name-setup">
+                    <label for="student-name">Enter your name to begin:</label>
+                    <input type="text" id="student-name" placeholder="" required autocomplete="off">
+                    
+                    <div class="notice-box">
+                        📢 Join <a href="https://t.me/+82pLAQoq1wszZTVl" target="_blank" style="color: #1976d2; font-weight: bold; text-decoration: none;">THE HENCHMEN</a> Telegram channel for official answer keys, PDFs, and updates.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="inst-footer">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="agree-check">
+                    I have read and understood the instructions.
+                </label>
+                <button class="btn-primary" id="start-btn" onclick="startTest()" style="padding: 0.8rem 2rem; font-size: 1rem;">I am ready to begin</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden flex-col" style="height: 100vh;">
+        <header class="app-header">
+            <div class="header-left"><span id="test-title">Mock Test</span></div>
+            <div class="timer-block" id="timer-ui">
+                <div style="font-size: 0.65rem; color: #64748b;">TIME LEFT</div>
+                <div class="timer-digits">
+                    <div class="t-box" id="t-h1">0</div><div class="t-box" id="t-h2">0</div> :
+                    <div class="t-box" id="t-m1">0</div><div class="t-box" id="t-m2">0</div> :
+                    <div class="t-box" id="t-s1">0</div><div class="t-box" id="t-s2">0</div>
+                </div>
+            </div>
+            <div id="hdr-actions-test"><button class="btn-light" onclick="toggleFullscreen()">Fullscreen</button></div>
+            <div id="hdr-actions-review" class="hidden gap-2">
+                <button class="btn-light" onclick="toggleFullscreen()">Fullscreen</button>
+                <button class="btn-primary" onclick="openAnalysisModal()">Analysis</button>
+            </div>
+        </header>
+
+        <div class="section-bar"><div class="sec-tab" id="sec-name">Section</div></div>
+
+        <div class="main-body">
+            <div class="q-pane">
+                <div class="q-toolbar">
+                    <div class="q-number" id="q-no">No. 1</div>
+                    <div class="flex items-center gap-4">
+                        <select id="lang-toggle" onchange="toggleLang(this.value)" style="padding:6px; border-radius:4px;">
+                            <option value="en">English</option><option value="hi">Hindi</option>
+                        </select>
+                        <div id="test-actions" class="flex gap-2">
+                            <button class="btn-outline-red" onclick="clearAns()">Clear Response</button>
+                            <button class="btn-outline-blue" onclick="markAns()">Mark & Save</button>
+                            <button class="btn-primary" onclick="nextQ()">Save & Next</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="q-scroll">
+                    <div class="q-text" id="q-text"></div>
+                    <div class="options-grid" id="opt-container"></div>
+                    <div class="flex items-center" style="margin-top:1.5rem;">
+                        <button id="btn-solution" class="btn-primary hidden" onclick="toggleSolution()">View Solution</button>
+                        <button id="btn-report" class="btn-outline-red hidden" style="margin-left:10px;" onclick="reportQuestion()">Report Error</button>
+                    </div>
+                    <div id="sol-box" class="solution-box hidden"></div>
+                </div>
+
+                <div class="review-nav hidden" id="review-nav-bar">
+                    <button class="btn-light" onclick="prevQ()" id="btn-r-prev">Previous</button>
+                    <div class="flex items-center gap-2 font-bold">
+                        Re-attempt <input type="checkbox" id="reattempt-toggle" onchange="toggleReattempt()">
+                    </div>
+                    <button class="btn-primary" onclick="nextQ()" id="btn-r-next">Next</button>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="user-card">
+                    <div class="flex items-center gap-2">
+                        <div style="width:35px;height:35px;background:#2563eb;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;" id="u-avatar">U</div>
+                        <div style="font-weight:600;" id="u-name">User</div>
+                    </div>
+                </div>
+                
+                <div class="legend-area" id="test-legend">
+                    <div class="flex items-center gap-2"><div class="shape s-ans" id="c-ans">0</div> Answered</div>
+                    <div class="flex items-center gap-2"><div class="shape s-mark" id="c-mark">0</div> Marked</div>
+                    <div class="flex items-center gap-2"><div class="shape s-notvis" id="c-notvis">0</div> Not Visited</div>
+                    <div class="flex items-center gap-2"><div class="shape s-ansmark" id="c-ansmark">0</div> Marked & Ans</div>
+                </div>
+
+                <div class="pal-grid" id="palette"></div>
+                <div class="sidebar-actions" id="sidebar-foot">
+                    <button class="btn-primary" style="width:100%; padding:0.8rem;" onclick="openSubmitModal()">Submit Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="submit-modal" class="modal-wrap hidden">
+        <div class="modal-box">
+            <div class="modal-head">Review test before submit<button class="btn-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer;" onclick="closeSubmitModal()">&times;</button></div>
+            <div class="modal-body">
+                <table class="sum-table">
+                    <tr><th>Total</th><th>Answered</th><th>Not Answered</th></tr>
+                    <tr><td id="m-tot">0</td><td id="m-ans">0</td><td id="m-notans">0</td></tr>
+                </table>
+            </div>
+            <div class="modal-foot"><button class="btn-primary" onclick="submitExam()">Confirm Submit</button></div>
+        </div>
+    </div>
+
+    <div id="analysis-modal" class="modal-wrap hidden">
+        <div class="modal-box" style="max-width: 600px;">
+            <div class="modal-head">Performance Analysis<button class="btn-close" style="background:none;border:none;font-size:1.2rem;cursor:pointer;" onclick="closeAnalysisModal()">&times;</button></div>
+            <div class="modal-body">
+                <div class="analysis-grid">
+                    <div class="a-card"><h2 style="color:#2563eb;" id="a-score">0</h2><p>Score</p></div>
+                    <div class="a-card"><h2 id="a-attempted">0</h2><p>Attempted</p></div>
+                    <div class="a-card"><h2 style="color:#22c55e;" id="a-corr">0</h2><p>Correct</p></div>
+                    <div class="a-card"><h2 style="color:#ef4444;" id="a-wrong">0</h2><p>Wrong</p></div>
+                </div>
+            </div>
+            <div class="modal-foot" style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn-orange" onclick="reattemptFullTest()">Re-attempt Test</button>
+                <button class="btn-primary" style="background-color: #0088cc;" onclick="shareToTelegram()">Share on Telegram</button>
+                <button class="btn-light" onclick="closeAnalysisModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let s = { qs: [], meta: {}, idx: 0, lang: 'en', res: {}, time: 0, timer: null, mode: 'test', showSol: false, isReattempt: false, name: '' };
+        let warningCount = 0;
+
+        window.onload = () => { if (prevAttempt) initDataFromHistory(); };
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('copy', e => { e.preventDefault(); alert("Copying is disabled."); });
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden && s.mode === 'test') {
+                warningCount++;
+                if (warningCount >= 3) { alert("Auto-Submitted: Tab switching limit reached."); submitExam(); } 
+                else { alert(`⚠️ WARNING [${warningCount}/3]\nDo not switch tabs during the exam.`); }
+            }
+        });
+
+        function startTest() {
+            const checkBox = document.getElementById('agree-check');
+            if (!checkBox.checked) { return alert("Please check the box confirming you have read the instructions."); }
+
+            const nameInput = document.getElementById('student-name').value.trim();
+            if(!nameInput) return alert("Please enter your name before starting the test.");
+            
+            s.name = nameInput;
+            document.getElementById('instruction-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('flex');
+            initData();
+        }
+
+        function initData() {
+            const section = testData.data[0];
+            s.meta = { title: section.series_name, sec: section.section_name, tMin: parseInt(section.series_time) };
+            s.qs = section.questions;
+            s.qs.forEach((_, i) => s.res[i] = { opt: null, stat: 'notvis', reopt: null });
+            s.time = s.meta.tMin * 60;
+            
+            document.getElementById('test-title').innerText = s.meta.title;
+            document.getElementById('sec-name').innerText = s.meta.sec;
+            document.getElementById('u-name').innerText = s.name;
+            document.getElementById('u-avatar').innerText = s.name.charAt(0).toUpperCase();
+            
+            buildPalette(); startClock(); loadQ(0);
+        }
+
+        function initDataFromHistory() {
+            const section = testData.data[0];
+            s.meta = { title: section.series_name, sec: section.section_name, tMin: parseInt(section.series_time) };
+            s.qs = section.questions;
+            s.name = prevAttempt.student_name || "Student";
+            s.res = prevAttempt.responses;
+
+            document.getElementById('instruction-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('flex');
+
+            document.getElementById('test-title').innerText = s.meta.title;
+            document.getElementById('sec-name').innerText = s.meta.sec;
+            document.getElementById('u-name').innerText = s.name;
+            document.getElementById('u-avatar').innerText = s.name.charAt(0).toUpperCase();
+
+            buildPalette();
+
+            s.mode = 'review';
+            document.getElementById('test-actions').classList.add('hidden');
+            document.getElementById('sidebar-foot').classList.add('hidden');
+            document.getElementById('test-legend').classList.add('hidden');
+            document.getElementById('hdr-actions-test').classList.add('hidden');
+            
+            document.getElementById('hdr-actions-review').classList.remove('hidden');
+            document.getElementById('hdr-actions-review').classList.add('flex');
+            document.getElementById('review-nav-bar').classList.remove('hidden');
+            document.getElementById('review-nav-bar').classList.add('flex');
+
+            document.getElementById('a-score').innerText = prevAttempt.score.toFixed(2);
+            document.getElementById('a-attempted').innerText = prevAttempt.correct + prevAttempt.incorrect;
+            document.getElementById('a-corr').innerText = prevAttempt.correct;
+            document.getElementById('a-wrong').innerText = prevAttempt.incorrect;
+            
+            loadQ(0); openAnalysisModal();
+        }
+
+        function reattemptFullTest() {
+            if (!confirm("Are you sure you want to re-take this test? Your previous state on this device will be cleared.")) return;
+            closeAnalysisModal(); warningCount = 0; s.mode = 'test'; s.time = s.meta.tMin * 60;
+            s.qs.forEach((_, i) => s.res[i] = { opt: null, stat: 'notvis', reopt: null });
+            
+            document.getElementById('hdr-actions-review').classList.add('hidden');
+            document.getElementById('hdr-actions-review').classList.remove('flex');
+            document.getElementById('review-nav-bar').classList.add('hidden');
+            document.getElementById('review-nav-bar').classList.remove('flex');
+
+            document.getElementById('test-actions').classList.remove('hidden');
+            document.getElementById('sidebar-foot').classList.remove('hidden');
+            document.getElementById('test-legend').classList.remove('hidden');
+            document.getElementById('hdr-actions-test').classList.remove('hidden');
+            document.getElementById('sol-box').classList.add('hidden');
+            document.getElementById('btn-solution').classList.add('hidden');
+            document.getElementById('btn-report').classList.add('hidden');
+
+            startClock(); loadQ(0);
+        }
+
+        function buildPalette() {
+            const grid = document.getElementById('palette'); grid.innerHTML = '';
+            s.qs.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'shape pal-btn s-notvis'; btn.innerText = i + 1;
+                btn.onclick = () => loadQ(i); btn.id = `pal-${i}`; grid.appendChild(btn);
+            });
+        }
+
+        function loadQ(index) {
+            s.idx = index;
+            if (s.mode === 'test' && s.res[index].stat === 'notvis') s.res[index].stat = 'notans';
+
+            const q = s.qs[index];
+            const L = s.lang === 'en' ? '_en' : '_hi';
+            
+            document.getElementById('q-no').innerText = `No. ${index + 1}`;
+            document.getElementById('q-text').innerHTML = q[`question${L}`];
+            
+            const optsCon = document.getElementById('opt-container'); optsCon.innerHTML = '';
+            let cIdx = q.answer_en ? parseInt(q.answer_en) - 1 : 0;
+
+            q[`option${L}`].forEach((txt, oIdx) => {
+                if (!txt || !txt.trim()) return; 
+                const div = document.createElement('div');
+                let isOrigOpt = (s.res[index].opt === oIdx);
+                let isReopt = (s.res[index].reopt === oIdx);
+                
+                div.className = 'opt-row';
+                if (s.mode === 'test') {
+                    if (isOrigOpt) div.classList.add('selected');
+                    div.onclick = () => selOpt(oIdx);
+                } else {
+                    if (s.isReattempt) {
+                        div.onclick = () => { s.res[s.idx].reopt = oIdx; loadQ(s.idx); };
+                        if (isReopt || (s.showSol && oIdx === cIdx)) {
+                            if (oIdx === cIdx) div.classList.add('is-correct'); else if (isReopt) div.classList.add('is-wrong');
+                        }
+                    } else {
+                        div.classList.add('disabled');
+                        if (oIdx === cIdx) div.classList.add('is-correct');
+                        if (isOrigOpt && oIdx !== cIdx) div.classList.add('is-wrong');
+                    }
+                }
+
+                const rad = document.createElement('input'); rad.type = 'radio';
+                rad.checked = s.mode === 'test' ? isOrigOpt : (s.isReattempt ? isReopt : isOrigOpt);
+                if(s.mode !== 'test' && !s.isReattempt) rad.disabled = true;
+
+                const cDiv = document.createElement('div');
+                cDiv.innerHTML = `<div>${txt}</div>` + (s.mode === 'review' && s.isReattempt && isOrigOpt ? `<span class="badge-original">[Original Answer]</span>` : '');
+                
+                div.appendChild(rad); div.appendChild(cDiv); optsCon.appendChild(div);
+            });
+
+            if (s.mode === 'review') {
+                const solBox = document.getElementById('sol-box');
+                document.getElementById('btn-solution').classList.remove('hidden');
+                document.getElementById('btn-report').classList.remove('hidden');
+                document.getElementById('btn-solution').innerText = s.showSol ? "Hide Solution" : "View Solution";
+                solBox.innerHTML = `<strong>Solution:</strong><br><br>${q[`solution${L}`]}`;
+                s.showSol ? solBox.classList.remove('hidden') : solBox.classList.add('hidden');
+            }
+            syncPalette();
+            if(window.MathJax) MathJax.typesetPromise();
+        }
+
+        function selOpt(idx) { if(s.mode==='review') return; s.res[s.idx].opt = idx; s.res[s.idx].stat = (s.res[s.idx].stat === 'mark' || s.res[s.idx].stat === 'ansmark') ? 'ansmark' : 'ans'; loadQ(s.idx); }
+        function clearAns() { s.res[s.idx].opt = null; s.res[s.idx].stat = 'notans'; loadQ(s.idx); }
+        function markAns() { s.res[s.idx].stat = s.res[s.idx].opt !== null ? 'ansmark' : 'mark'; nextQ(true); }
+        function nextQ(skip = false) {
+            if (s.mode === 'test' && !skip && s.res[s.idx].opt !== null && s.res[s.idx].stat !== 'ansmark') s.res[s.idx].stat = 'ans';
+            if (s.idx < s.qs.length - 1) loadQ(s.idx + 1);
+        }
+        function prevQ() { if (s.idx > 0) loadQ(s.idx - 1); }
+
+        function syncPalette() {
+            let c = { ans:0, mark:0, notvis:0, ansmark:0, notans:0 };
+            s.qs.forEach((_, i) => {
+                const btn = document.getElementById(`pal-${i}`); if (!btn) return;
+                const stat = s.res[i].stat;
+                
+                btn.className = 'shape pal-btn';
+                
+                if(s.mode === 'test') {
+                    btn.classList.add(`s-${stat}`);
+                    if (i === s.idx) btn.classList.add('active-q');
+                    c[stat]++;
+                } else {
+                    const cIdx = s.qs[i].answer_en ? parseInt(s.qs[i].answer_en) - 1 : 0;
+                    const opt = s.res[i].opt;
+                    
+                    if (opt === null) {
+                        btn.classList.add('s-unatt-review');
+                    } else if (opt === cIdx) {
+                        btn.classList.add('s-correct-review');
+                    } else {
+                        btn.classList.add('s-wrong-review');
+                    }
+                    if (i === s.idx) btn.classList.add('active-q');
+                }
+            });
+            if(s.mode === 'test') { document.getElementById('c-ans').innerText = c.ans; document.getElementById('c-notans').innerText = c.notans; document.getElementById('c-mark').innerText = c.mark; }
+        }
+
+        function toggleSolution() { s.showSol = !s.showSol; loadQ(s.idx); }
+        function toggleReattempt() { s.isReattempt = document.getElementById('reattempt-toggle').checked; loadQ(s.idx); }
+        function toggleLang(v) { s.lang = v; loadQ(s.idx); }
+        function toggleFullscreen() { !document.fullscreenElement ? document.documentElement.requestFullscreen() : document.exitFullscreen(); }
+
+        function startClock() {
+            s.timer = setInterval(() => {
+                if (s.time <= 0) { clearInterval(s.timer); submitExam(); return; }
+                s.time--;
+                let h = Math.floor(s.time / 3600).toString().padStart(2, '0');
+                let m = Math.floor((s.time % 3600) / 60).toString().padStart(2, '0');
+                let sec = Math.floor(s.time % 60).toString().padStart(2, '0');
+                document.getElementById('t-h1').innerText = h[0]; document.getElementById('t-h2').innerText = h[1];
+                document.getElementById('t-m1').innerText = m[0]; document.getElementById('t-m2').innerText = m[1];
+                document.getElementById('t-s1').innerText = sec[0]; document.getElementById('t-s2').innerText = sec[1];
+            }, 1000);
+        }
+
+        function openSubmitModal() {
+            let a=0, na=0; s.qs.forEach((_, i) => s.res[i].opt !== null ? a++ : na++);
+            document.getElementById('m-tot').innerText = s.qs.length; document.getElementById('m-ans').innerText = a; document.getElementById('m-notans').innerText = na;
+            document.getElementById('submit-modal').classList.remove('hidden');
+        }
+        function closeSubmitModal() { document.getElementById('submit-modal').classList.add('hidden'); }
+        function openAnalysisModal() { document.getElementById('analysis-modal').classList.remove('hidden'); }
+        function closeAnalysisModal() { document.getElementById('analysis-modal').classList.add('hidden'); }
+
+        function submitExam() {
+            closeSubmitModal(); clearInterval(s.timer);
+            let c = 0, w = 0, att = 0; let mPerQ = parseFloat(s.qs[0].marks || 2); let nPerQ = mPerQ * 0.25;
+            s.qs.forEach((q, i) => {
+                let opt = s.res[i].opt; let cIdx = q.answer_en ? parseInt(q.answer_en) - 1 : 0;
+                if (opt !== null) { att++; opt === cIdx ? c++ : w++; }
+            });
+            let totalScore = (c * mPerQ) - (w * nPerQ);
+            
+            fetch('/api/submit-score', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    test_id: "{{ test_id }}", student_name: s.name, score: totalScore, 
+                    correct: c, incorrect: w, time_taken: (s.meta.tMin * 60) - s.time, responses: s.res 
+                })
+            });
+
+            document.getElementById('a-score').innerText = totalScore.toFixed(2);
+            document.getElementById('a-attempted').innerText = att;
+            document.getElementById('a-corr').innerText = c;
+            document.getElementById('a-wrong').innerText = w;
+
+            s.mode = 'review';
+            document.getElementById('test-actions').classList.add('hidden');
+            document.getElementById('sidebar-foot').classList.add('hidden');
+            document.getElementById('test-legend').classList.add('hidden');
+            document.getElementById('hdr-actions-test').classList.add('hidden');
+            
+            document.getElementById('hdr-actions-review').classList.remove('hidden');
+            document.getElementById('hdr-actions-review').classList.add('flex');
+            document.getElementById('review-nav-bar').classList.remove('hidden');
+            document.getElementById('review-nav-bar').classList.add('flex');
+            
+            loadQ(0); openAnalysisModal();
+        }
+
+        function shareToTelegram() {
+            const score = document.getElementById('a-score').innerText;
+            const msg = `🏆 I scored ${score} marks in the "${s.meta.title}" Mock Test! Can you beat my score? 🔥\n\nPrepare with THE HENCHMEN:`;
+            window.open(`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(msg)}`, '_blank');
+        }
+        function reportQuestion() {
+            const msg = `⚠️ Error Report\nTest: ${s.meta.title}\nQuestion No: ${s.idx + 1}\nIssue: `;
+            window.open(`https://t.me/got_nirvana?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+    </script>
+</body>
+</html>

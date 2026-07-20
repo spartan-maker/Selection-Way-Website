@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; height: 100vh; }
+        #player { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <video id="player" controls playsinline></video>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        let originalUrl = urlParams.get('url'); 
+        const video = document.getElementById('player');
+
+        if (!originalUrl) {
+            alert("No video source found!");
+            return;
+        }
+
+        if (!originalUrl.startsWith('http://') && !originalUrl.startsWith('https://')) {
+            originalUrl = 'https://' + originalUrl;
+        }
+
+        const isHLS = originalUrl.toLowerCase().includes('.m3u8');
+        const videoSource = isHLS ? originalUrl : "/api/proxy-video?url=" + encodeURIComponent(originalUrl);
+
+        const plyrOptions = {
+            speed: { 
+                selected: 1, 
+                options: [0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3] 
+            }
+        };
+
+        if (isHLS && typeof Hls !== 'undefined' && Hls.isSupported()) {
+            const hls = new Hls({
+                xhrSetup: function(xhr) {
+                    xhr.withCredentials = false;
+                }
+            });
+
+            hls.loadSource(videoSource);
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                new Plyr(video, plyrOptions);
+            });
+
+        } else if (isHLS && video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = videoSource;
+            new Plyr(video, plyrOptions);
+        } else {
+            video.src = videoSource;
+            new Plyr(video, plyrOptions);
+        }
+    });
+    </script>
+</body>
+</html>

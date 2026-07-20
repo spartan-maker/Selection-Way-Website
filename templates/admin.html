@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Selection Way</title>
+    <style>
+        :root { --bg: #0f172a; --surface: #1e293b; --primary: #2563eb; --danger: #ef4444; --text: #f8fafc; --border: #334155; }
+        body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 2rem; margin: 0; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 2rem; }
+        .card { background: var(--surface); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid var(--border); }
+        .form-group { display: flex; gap: 1rem; align-items: flex-end; }
+        input { padding: 0.7rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); color: white; width: 100%; }
+        button { padding: 0.7rem 1.2rem; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; white-space: nowrap; }
+        .btn-primary { background: var(--primary); } .btn-primary:hover { background: #1d4ed8; }
+        .btn-danger { background: var(--danger); } .btn-danger:hover { background: #b91c1c; }
+        .btn-warn { background: #f59e0b; } .btn-warn:hover { background: #d97706; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 1rem; border-bottom: 1px solid var(--border); }
+        th { color: #94a3b8; font-size: 0.9rem; text-transform: uppercase; }
+        .actions { display: flex; gap: 0.5rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>Admin Dashboard</h2>
+        <a href="/logout" style="color: #94a3b8; text-decoration: none;">Log Out</a>
+    </div>
+
+    <div class="card">
+        <h3>Create New Student Account</h3>
+        <div class="form-group">
+            <div style="flex: 1;"><label>Username</label><input type="text" id="new-user" placeholder="Enter unique ID"></div>
+            <div style="flex: 1;"><label>Password</label><input type="text" id="new-pass" placeholder="Enter secure password"></div>
+            <button class="btn-primary" onclick="createUser()">Add Student</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Active Students</h3>
+        <table>
+            <thead><tr><th>Username</th><th>Devices Bound</th><th>Actions</th></tr></thead>
+            <tbody id="user-table"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function loadUsers() {
+        const res = await fetch('/admin/api/users');
+        const users = await res.json();
+        const tbody = document.getElementById('user-table'); tbody.innerHTML = '';
+        users.forEach(u => {
+            tbody.innerHTML += `<tr>
+                <td><strong>${u.username}</strong></td>
+                <td>${u.device_count} / 2</td>
+                <td class="actions">
+                    <button class="btn-warn" onclick="resetDevices('${u._id}')">Reset Devices</button>
+                    <button class="btn-danger" onclick="deleteUser('${u._id}', '${u.username}')">Delete</button>
+                </td>
+            </tr>`;
+        });
+    }
+
+    async function createUser() {
+        const user = document.getElementById('new-user').value; const pass = document.getElementById('new-pass').value;
+        if(!user || !pass) return alert("Fill all fields");
+        const res = await fetch('/admin/api/add_user', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username: user, password: pass }) });
+        const data = await res.json();
+        if(res.ok) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; loadUsers(); } 
+        else { alert(data.error); }
+    }
+
+    async function resetDevices(id) {
+        if(confirm("Clear device locks for this user?")) { await fetch(`/admin/api/reset_devices/${id}`, { method: 'POST' }); loadUsers(); }
+    }
+
+    async function deleteUser(id, name) {
+        if(confirm(`Permanently delete '${name}'?`)) { await fetch(`/admin/api/delete_user/${id}`, { method: 'DELETE' }); loadUsers(); }
+    }
+
+    loadUsers();
+</script>
+</body>
+</html>
