@@ -80,9 +80,12 @@ function goBack() {
     window.history.back();
 }
 
+let currentNavId = 0;
+
 // --- ROUTER ---
 function router() {
     closeModal();
+    currentNavId++;
     let hash = window.location.hash.slice(1);
     if (!hash || hash === '/' || hash === '') {
         return loadCourses();
