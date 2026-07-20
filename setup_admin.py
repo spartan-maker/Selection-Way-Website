@@ -17,7 +17,8 @@ db['users'].update_one(
     {"$set": {
         "password": generate_password_hash(admin_pass),
         "role": "admin",
-        "devices": []
+        "devices": [],
+        "max_devices": 10
     }},
     upsert=True
 )
