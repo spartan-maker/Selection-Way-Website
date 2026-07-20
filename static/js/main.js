@@ -162,8 +162,7 @@ function loadCourses(){
     if (allCoursesData.length === 0) {
         showSkeletons();
         let navId = currentNavId;
-        fetchWithPlatform("/api/courses")
-        .then(res=>res.json())
+        fetchDataWithCache("/api/courses")
         .then(data=>{
             if (navId !== currentNavId) return;
             allCoursesData = data;
@@ -276,8 +275,7 @@ function loadSubjects(courseId) {
     showSkeletons();
 
     let navId = currentNavId;
-    fetchWithPlatform(`/api/course/${courseId}`)
-    .then(res=>res.json())
+    fetchDataWithCache(`/api/course/${courseId}`)
     .then(data=>{
         if (navId !== currentNavId) return;
         let subjects={};
@@ -335,8 +333,7 @@ function loadAllPdfs(courseId, specificSection = null) {
     showSkeletons();
 
     let navId = currentNavId;
-    fetchWithPlatform(`/api/pdfs/${courseId}`)
-    .then(res => res.json())
+    fetchDataWithCache(`/api/pdfs/${courseId}`)
     .then(data => {
         if (navId !== currentNavId) return;
         let groupedPdfs = {};
@@ -394,8 +391,7 @@ function loadTopicsForSubject(courseId, subjectName) {
     showSkeletons();
     
     let navId = currentNavId;
-    fetchWithPlatform(`/api/course/${courseId}`)
-    .then(res=>res.json())
+    fetchDataWithCache(`/api/course/${courseId}`)
     .then(data=>{
         if (navId !== currentNavId) return;
         let topics = [];
@@ -428,8 +424,7 @@ function loadClassesForTopic(courseId, subjectName, topicId, topicName) {
     showSkeletons();
     
     let navId = currentNavId;
-    fetchWithPlatform(`/api/classes/${courseId}/${topicId}`)
-    .then(res=>res.json())
+    fetchDataWithCache(`/api/classes/${courseId}/${topicId}`)
     .then(data=>{
         if (navId !== currentNavId) return;
         let subtopics={}; let hasSub=false;
@@ -463,8 +458,7 @@ function loadSubtopicClasses(courseId, subjectName, topicId, subName) {
     showSkeletons();
     
     let navId = currentNavId;
-    fetchWithPlatform(`/api/classes/${courseId}/${topicId}`)
-    .then(res=>res.json())
+    fetchDataWithCache(`/api/classes/${courseId}/${topicId}`)
     .then(data=>{
         if (navId !== currentNavId) return;
         let subData = data.filter(cls => cls.subTopic?.subTopicName === subName);
@@ -516,8 +510,7 @@ function loadMockTests(courseId) {
     showSkeletons();
 
     let navId = currentNavId;
-    fetchWithPlatform(`/api/mock-tests/${courseId}`)
-    .then(res => res.json())
+    fetchDataWithCache(`/api/mock-tests/${courseId}`)
     .then(data => {
         if (navId !== currentNavId) return;
         if(data.state !== 200 || !data.data || !data.data.topic) {
@@ -813,7 +806,7 @@ function showPlatformSelection() {
 
 function setPlatform(platform) {
     localStorage.setItem('platform', platform);
-    allCoursesData = []; // Clear cache when switching
+    allCoursesData = []; apiCache = {}; // Clear cache when switching
     courseNamesCache = {};
     window.location.hash = '/';
     router();
@@ -823,6 +816,26 @@ function switchPlatform() {
     localStorage.removeItem('platform');
     window.location.hash = '/';
     router();
+}
+
+
+let apiCache = {};
+
+function fetchDataWithCache(url) {
+    let platform = localStorage.getItem('platform') || 'selectionway';
+    let cacheKey = platform + "_" + url;
+    
+    if (apiCache[cacheKey]) {
+        return Promise.resolve(apiCache[cacheKey]);
+    }
+    
+    let options = { headers: { 'X-Platform': platform } };
+    return fetch(url, options)
+        .then(res => res.json())
+        .then(data => {
+            apiCache[cacheKey] = data;
+            return data;
+        });
 }
 
 // Custom Fetch Wrapper
