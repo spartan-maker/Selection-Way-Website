@@ -86,6 +86,13 @@ let currentNavId = 0;
 function router() {
     closeModal();
     currentNavId++;
+    let platform = localStorage.getItem('platform');
+    if (!platform) {
+        return showPlatformSelection();
+    }
+    
+    document.getElementById('switch-platform-btn').style.display = 'inline-block';
+    
     let hash = window.location.hash.slice(1);
     if (!hash || hash === '/' || hash === '') {
         return loadCourses();
@@ -155,7 +162,7 @@ function loadCourses(){
     if (allCoursesData.length === 0) {
         showSkeletons();
         let navId = currentNavId;
-        fetch("/api/courses")
+        fetchWithPlatform("/api/courses")
         .then(res=>res.json())
         .then(data=>{
             if (navId !== currentNavId) return;
@@ -269,7 +276,7 @@ function loadSubjects(courseId) {
     showSkeletons();
 
     let navId = currentNavId;
-    fetch(`/api/course/${courseId}`)
+    fetchWithPlatform(`/api/course/${courseId}`)
     .then(res=>res.json())
     .then(data=>{
         if (navId !== currentNavId) return;
@@ -328,7 +335,7 @@ function loadAllPdfs(courseId, specificSection = null) {
     showSkeletons();
 
     let navId = currentNavId;
-    fetch(`/api/pdfs/${courseId}`)
+    fetchWithPlatform(`/api/pdfs/${courseId}`)
     .then(res => res.json())
     .then(data => {
         if (navId !== currentNavId) return;
@@ -387,7 +394,7 @@ function loadTopicsForSubject(courseId, subjectName) {
     showSkeletons();
     
     let navId = currentNavId;
-    fetch(`/api/course/${courseId}`)
+    fetchWithPlatform(`/api/course/${courseId}`)
     .then(res=>res.json())
     .then(data=>{
         if (navId !== currentNavId) return;
@@ -421,7 +428,7 @@ function loadClassesForTopic(courseId, subjectName, topicId, topicName) {
     showSkeletons();
     
     let navId = currentNavId;
-    fetch(`/api/classes/${courseId}/${topicId}`)
+    fetchWithPlatform(`/api/classes/${courseId}/${topicId}`)
     .then(res=>res.json())
     .then(data=>{
         if (navId !== currentNavId) return;
@@ -456,7 +463,7 @@ function loadSubtopicClasses(courseId, subjectName, topicId, subName) {
     showSkeletons();
     
     let navId = currentNavId;
-    fetch(`/api/classes/${courseId}/${topicId}`)
+    fetchWithPlatform(`/api/classes/${courseId}/${topicId}`)
     .then(res=>res.json())
     .then(data=>{
         if (navId !== currentNavId) return;
@@ -498,7 +505,7 @@ function loadMockTests(courseId) {
     showSkeletons();
 
     let navId = currentNavId;
-    fetch(`/api/mock-tests/${courseId}`)
+    fetchWithPlatform(`/api/mock-tests/${courseId}`)
     .then(res => res.json())
     .then(data => {
         if (navId !== currentNavId) return;
@@ -775,3 +782,44 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+
+function showPlatformSelection() {
+    document.getElementById('switch-platform-btn').style.display = 'none';
+    breadcrumbPath = ["Select Platform"];
+    updateBreadcrumbUI();
+    let html = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:60vh; text-align:center;">
+            <h2 style="margin-bottom: 20px; color: var(--text-main);">Choose Your Platform</h2>
+            <div style="display:flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                <button onclick="setPlatform('selectionway')" style="padding: 15px 30px; font-size: 1.2rem; background: #38bdf8; border-radius: 8px;">Selection Way</button>
+                <button onclick="setPlatform('topperswisdom')" style="padding: 15px 30px; font-size: 1.2rem; background: #a855f7; border-radius: 8px;">Toppers Wisdom</button>
+            </div>
+        </div>
+    `;
+    document.getElementById("content").innerHTML = html;
+}
+
+function setPlatform(platform) {
+    localStorage.setItem('platform', platform);
+    allCoursesData = []; // Clear cache when switching
+    courseNamesCache = {};
+    window.location.hash = '/';
+    router();
+}
+
+function switchPlatform() {
+    localStorage.removeItem('platform');
+    window.location.hash = '/';
+    router();
+}
+
+// Custom Fetch Wrapper
+function fetchWithPlatform(url, options = {}) {
+    let platform = localStorage.getItem('platform') || 'selectionway';
+    options.headers = {
+        ...options.headers,
+        'X-Platform': platform
+    };
+    return fetch(url, options);
+}
