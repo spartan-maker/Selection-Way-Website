@@ -243,6 +243,40 @@ def courses():
         logging.error(f"Error in /api/courses: {e}")
         return jsonify({"error": "Unable to load data"}), 502
 
+@app.route("/api/proxy-image")
+@login_required
+def proxy_image():
+    image_url = request.args.get('url')
+    if not image_url:
+        return jsonify({"error": "No URL provided"}), 400
+    try:
+        # Use the global cloudscraper instance to bypass cloudflare challenges
+        response = global_scraper.get(image_url, timeout=10)
+        return Response(response.content, mimetype=response.headers.get('Content-Type', 'image/jpeg'))
+    except Exception as e:
+        logging.error(f"Failed to proxy image {image_url}: {e}")
+        return jsonify({"error": "Failed to load image"}), 502
+
+@app.route("/api/proxy-video")
+@login_required
+def proxy_video():
+    video_url = request.args.get('url')
+    if not video_url:
+        return jsonify({"error": "No URL provided"}), 400
+    try:
+        # Using streaming requests to handle larger video files efficiently
+        response = requests.get(video_url, stream=True, timeout=15)
+        headers = {key: value for key, value in response.headers.items() if key.lower() not in ['content-encoding', 'transfer-encoding']}
+        
+        def generate():
+            for chunk in response.iter_content(chunk_size=8192):
+                yield chunk
+                
+        return Response(generate(), headers=headers, status=response.status_code)
+    except Exception as e:
+        logging.error(f"Failed to proxy video {video_url}: {e}")
+        return jsonify({"error": "Failed to stream video"}), 502
+
 @app.route("/api/course/<course_id>")
 @login_required
 def topics(course_id):
