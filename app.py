@@ -101,13 +101,14 @@ def login_page():
         session['role'] = role
         return jsonify({"success": True, "redirect": "/"})
     
-    if len(bound_devices) < 2:
+    max_devices = user.get("max_devices", 2)
+    if len(bound_devices) < max_devices:
         users_collection.update_one({"_id": user["_id"]}, {"$push": {"devices": device_id}})
         session['username'] = username
         session['role'] = role
         return jsonify({"success": True, "redirect": "/"})
     
-    return jsonify({"error": "Maximum device limit (2) reached. Please contact admin."}), 403
+    return jsonify({"error": f"Maximum device limit ({max_devices}) reached. Please contact admin."}), 403
 
 @app.route("/logout")
 def logout():
@@ -126,6 +127,7 @@ def get_users():
     for u in users:
         u["_id"] = str(u["_id"])
         u["device_count"] = len(u.get("devices", []))
+        u["max_devices"] = u.get("max_devices", 2)
     return jsonify(users)
 
 @app.route("/admin/api/add_user", methods=["POST"])
@@ -134,6 +136,7 @@ def add_user():
     data = request.json
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
+    max_devices = int(data.get("max_devices", 2))
     
     if not username or not password:
         return jsonify({"error": "Username and password required"}), 400
@@ -144,8 +147,17 @@ def add_user():
         "username": username,
         "password": generate_password_hash(password),
         "role": "student",
-        "devices": []
+        "devices": [],
+        "max_devices": max_devices
     })
+    return jsonify({"success": True})
+
+@app.route("/admin/api/update_devices/<user_id>", methods=["POST"])
+@admin_required
+def update_devices(user_id):
+    data = request.json
+    max_devices = int(data.get("max_devices", 2))
+    users_collection.update_one({"_id": ObjectId(user_id)}, {"$set": {"max_devices": max_devices}})
     return jsonify({"success": True})
 
 @app.route("/admin/api/delete_user/<user_id>", methods=["DELETE"])
