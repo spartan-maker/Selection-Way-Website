@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Selection Way</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
     <style>
         :root { --bg: #0f172a; --surface: #1e293b; --primary: #2563eb; --danger: #ef4444; --text: #f8fafc; --border: #334155; }
         body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; padding: 2rem; margin: 0; }
@@ -49,6 +51,19 @@
 </div>
 
 <script>
+    function showToast(msg, type='info') {
+        Toastify({
+            text: msg,
+            duration: 3000,
+            close: true,
+            gravity: "top",
+            position: "right",
+            style: {
+                background: type === 'error' ? "#ef4444" : (type === 'success' ? "#22c55e" : "#38bdf8")
+            }
+        }).showToast();
+    }
+
     async function loadUsers() {
         const res = await fetch('/admin/api/users');
         const users = await res.json();
@@ -72,27 +87,39 @@
     async function createUser() {
         const user = document.getElementById('new-user').value; const pass = document.getElementById('new-pass').value;
         const max = document.getElementById('new-max').value || 2;
-        if(!user || !pass) return alert("Fill all fields");
+        if(!user || !pass) return showToast("Fill all fields", "error");
         const res = await fetch('/admin/api/add_user', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username: user, password: pass, max_devices: max }) });
         const data = await res.json();
-        if(res.ok) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; document.getElementById('new-max').value = '2'; loadUsers(); } 
-        else { alert(data.error); }
+        if(res.ok) { 
+            document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; document.getElementById('new-max').value = '2'; 
+            showToast("Student added successfully", "success");
+            loadUsers(); 
+        } 
+        else { showToast(data.error, "error"); }
     }
 
     async function updateMaxDevices(id) {
         const max = document.getElementById(`max-${id}`).value;
-        if(!max || max < 1) return alert("Enter a valid number");
+        if(!max || max < 1) return showToast("Enter a valid number", "error");
         const res = await fetch(`/admin/api/update_devices/${id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ max_devices: max }) });
-        if(res.ok) { loadUsers(); }
-        else { alert("Failed to update max devices"); }
+        if(res.ok) { showToast("Max devices updated", "success"); loadUsers(); }
+        else { showToast("Failed to update max devices", "error"); }
     }
 
     async function resetDevices(id) {
-        if(confirm("Clear device locks for this user?")) { await fetch(`/admin/api/reset_devices/${id}`, { method: 'POST' }); loadUsers(); }
+        if(confirm("Clear device locks for this user?")) { 
+            await fetch(`/admin/api/reset_devices/${id}`, { method: 'POST' }); 
+            showToast("Devices reset successfully", "success");
+            loadUsers(); 
+        }
     }
 
     async function deleteUser(id, name) {
-        if(confirm(`Permanently delete '${name}'?`)) { await fetch(`/admin/api/delete_user/${id}`, { method: 'DELETE' }); loadUsers(); }
+        if(confirm(`Permanently delete '${name}'?`)) { 
+            await fetch(`/admin/api/delete_user/${id}`, { method: 'DELETE' }); 
+            showToast("User deleted successfully", "success");
+            loadUsers(); 
+        }
     }
 
     loadUsers();
