@@ -740,102 +740,20 @@ function openVideoPlayer(recordings, defaultLink, title) {
         }));
     }
 
+    if (typeof artplayerPluginAutoThumbnail !== 'undefined') {
+        artConfig.plugins.push(
+            artplayerPluginAutoThumbnail({
+                // Using defaults
+            })
+        );
+    }
+
     if (currentArtPlayer) {
         currentArtPlayer.destroy(false);
         currentArtPlayer = null;
     }
 
     currentArtPlayer = new Artplayer(artConfig);
-
-    // --- Client-side thumbnail preview ---
-    currentArtPlayer.on('ready', () => {
-        const thumbVideo = document.createElement('video');
-        thumbVideo.crossOrigin = 'anonymous';
-        thumbVideo.preload = 'auto';
-        thumbVideo.muted = true;
-        thumbVideo.style.display = 'none';
-        document.body.appendChild(thumbVideo);
-
-        const thumbCanvas = document.createElement('canvas');
-        thumbCanvas.width = 160;
-        thumbCanvas.height = 90;
-        const ctx = thumbCanvas.getContext('2d');
-
-        const thumbDiv = document.createElement('div');
-        thumbDiv.style.cssText = 'position:absolute; bottom:12px; pointer-events:none; z-index:100; display:none; border:2px solid #38bdf8; border-radius:6px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.6);';
-        
-        const thumbImg = document.createElement('img');
-        thumbImg.width = 160;
-        thumbImg.height = 90;
-        thumbImg.style.display = 'block';
-        thumbDiv.appendChild(thumbImg);
-
-        const progressEl = currentArtPlayer.template.$progress;
-        if (progressEl) {
-            progressEl.style.position = 'relative';
-            progressEl.appendChild(thumbDiv);
-        }
-
-        // Load the same video source into the hidden element
-        if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
-            const thumbHls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
-            thumbHls.loadSource(proxiedInitialUrl);
-            thumbHls.attachMedia(thumbVideo);
-            thumbVideo._thumbHls = thumbHls;
-        } else {
-            thumbVideo.src = proxiedInitialUrl;
-        }
-
-        let thumbTimeout = null;
-        let lastThumbTime = -1;
-
-        function onProgressHover(e) {
-            if (!progressEl || !currentArtPlayer) return;
-            const rect = progressEl.getBoundingClientRect();
-            const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-            const duration = currentArtPlayer.duration || 0;
-            if (duration <= 0) return;
-
-            const seekTime = Math.floor(percent * duration);
-            
-            // Position the thumbnail
-            const leftPx = Math.max(82, Math.min(rect.width - 82, e.clientX - rect.left));
-            thumbDiv.style.left = (leftPx - 80) + 'px';
-            thumbDiv.style.display = 'block';
-
-            if (Math.abs(seekTime - lastThumbTime) < 2) return;
-            lastThumbTime = seekTime;
-
-            clearTimeout(thumbTimeout);
-            thumbTimeout = setTimeout(() => {
-                thumbVideo.currentTime = seekTime;
-            }, 100);
-        }
-
-        thumbVideo.addEventListener('seeked', () => {
-            try {
-                ctx.drawImage(thumbVideo, 0, 0, thumbCanvas.width, thumbCanvas.height);
-                thumbImg.src = thumbCanvas.toDataURL('image/jpeg', 0.5);
-            } catch (e) {
-                // CORS may block this for proxied videos — silently fail
-            }
-        });
-
-        if (progressEl) {
-            progressEl.addEventListener('mousemove', onProgressHover);
-            progressEl.addEventListener('mouseleave', () => {
-                thumbDiv.style.display = 'none';
-                clearTimeout(thumbTimeout);
-            });
-        }
-
-        // Cleanup on destroy
-        currentArtPlayer.on('destroy', () => {
-            if (thumbVideo._thumbHls) thumbVideo._thumbHls.destroy();
-            thumbVideo.remove();
-            clearTimeout(thumbTimeout);
-        });
-    });
 }
 
 function closeModal() { 
