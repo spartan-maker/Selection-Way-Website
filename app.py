@@ -260,7 +260,9 @@ def proxy_image():
     try:
         # Use the global cloudscraper instance to bypass cloudflare challenges
         response = global_scraper.get(image_url, timeout=10)
-        return Response(response.content, mimetype=response.headers.get('Content-Type', 'image/jpeg'))
+        flask_response = Response(response.content, mimetype=response.headers.get('Content-Type', 'image/jpeg'))
+        flask_response.headers["Cache-Control"] = "public, max-age=86400"
+        return flask_response
     except Exception as e:
         logging.error(f"Failed to proxy image {image_url}: {e}")
         return jsonify({"error": "Failed to load image"}), 502
