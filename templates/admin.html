@@ -34,6 +34,7 @@
         <div class="form-group">
             <div style="flex: 1;"><label>Username</label><input type="text" id="new-user" placeholder="Enter unique ID"></div>
             <div style="flex: 1;"><label>Password</label><input type="text" id="new-pass" placeholder="Enter secure password"></div>
+            <div style="flex: 1;"><label>Max Devices</label><input type="number" id="new-max" value="2" min="1"></div>
             <button class="btn-primary" onclick="createUser()">Add Student</button>
         </div>
     </div>
@@ -41,7 +42,7 @@
     <div class="card">
         <h3>Active Students</h3>
         <table>
-            <thead><tr><th>Username</th><th>Devices Bound</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Username</th><th>Devices Bound</th><th>Max Devices</th><th>Actions</th></tr></thead>
             <tbody id="user-table"></tbody>
         </table>
     </div>
@@ -55,7 +56,11 @@
         users.forEach(u => {
             tbody.innerHTML += `<tr>
                 <td><strong>${u.username}</strong></td>
-                <td>${u.device_count} / 2</td>
+                <td>${u.device_count} / ${u.max_devices}</td>
+                <td>
+                    <input type="number" id="max-${u._id}" value="${u.max_devices}" min="1" style="width: 60px; padding: 0.4rem;">
+                    <button class="btn-primary" onclick="updateMaxDevices('${u._id}')" style="padding: 0.4rem 0.8rem;">Save</button>
+                </td>
                 <td class="actions">
                     <button class="btn-warn" onclick="resetDevices('${u._id}')">Reset Devices</button>
                     <button class="btn-danger" onclick="deleteUser('${u._id}', '${u.username}')">Delete</button>
@@ -66,11 +71,20 @@
 
     async function createUser() {
         const user = document.getElementById('new-user').value; const pass = document.getElementById('new-pass').value;
+        const max = document.getElementById('new-max').value || 2;
         if(!user || !pass) return alert("Fill all fields");
-        const res = await fetch('/admin/api/add_user', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username: user, password: pass }) });
+        const res = await fetch('/admin/api/add_user', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ username: user, password: pass, max_devices: max }) });
         const data = await res.json();
-        if(res.ok) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; loadUsers(); } 
+        if(res.ok) { document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = ''; document.getElementById('new-max').value = '2'; loadUsers(); } 
         else { alert(data.error); }
+    }
+
+    async function updateMaxDevices(id) {
+        const max = document.getElementById(`max-${id}`).value;
+        if(!max || max < 1) return alert("Enter a valid number");
+        const res = await fetch(`/admin/api/update_devices/${id}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ max_devices: max }) });
+        if(res.ok) { loadUsers(); }
+        else { alert("Failed to update max devices"); }
     }
 
     async function resetDevices(id) {
