@@ -4,20 +4,21 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-let historyStack = [];
 let breadcrumbPath = ["Selection Way"];
-let currentCourse = "";
-
 let allCoursesData = [];
 let currentCategoryFilter = "All";
 let currentSearchQuery = "";
+let courseNamesCache = {};
 
 window.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('theme') === 'light') {
         document.body.classList.add('light-mode');
         document.getElementById('theme-toggle').innerText = '🌙';
     }
+    router();
 });
+
+window.addEventListener('hashchange', router);
 
 function toggleTheme() {
     document.body.classList.toggle('light-mode');
@@ -75,8 +76,77 @@ function updateBreadcrumbUI() {
     }
 }
 
-function loadCourses(isBack = false){
-    if(!isBack) { historyStack = []; breadcrumbPath = ["Selection Way"]; }
+function goBack() {
+    window.history.back();
+}
+
+// --- ROUTER ---
+function router() {
+    closeModal();
+    let hash = window.location.hash.slice(1);
+    if (!hash || hash === '/' || hash === '') {
+        return loadCourses();
+    }
+    
+    let parts = hash.split('/').filter(p => p);
+    
+    if (parts[0] === 'course' && parts.length >= 2) {
+        let courseId = parts[1];
+        
+        if (parts.length === 2) {
+            return loadSubjects(courseId);
+        }
+        
+        if (parts[2] === 'pdfs') {
+            if (parts.length === 3) {
+                return loadAllPdfs(courseId);
+            } else if (parts.length === 4) {
+                return loadAllPdfs(courseId, decodeURIComponent(parts[3]));
+            }
+        }
+        
+        if (parts[2] === 'mock-tests') {
+            return loadMockTests(courseId);
+        }
+        
+        if (parts[2] === 'subject' && parts.length >= 4) {
+            let subjectName = decodeURIComponent(parts[3]);
+            
+            if (parts.length === 4) {
+                return loadTopicsForSubject(courseId, subjectName);
+            }
+            
+            if (parts[4] === 'topic' && parts.length >= 6) {
+                let topicId = parts[5];
+                
+                if (parts.length === 6) {
+                    let topicName = parts.length > 6 ? decodeURIComponent(parts[6]) : "Topic Details";
+                    return loadClassesForTopic(courseId, subjectName, topicId, topicName);
+                }
+                
+                if (parts[6] === 'sub' && parts.length === 8) {
+                    let subName = decodeURIComponent(parts[7]);
+                    return loadSubtopicClasses(courseId, subjectName, topicId, subName);
+                }
+            }
+        }
+    }
+    loadCourses();
+}
+
+// --- DATA FETCHING & RENDERING ---
+
+function getCourseName(courseId) {
+    if (courseNamesCache[courseId]) return courseNamesCache[courseId];
+    if (allCoursesData.length > 0) {
+        let c = allCoursesData.find(x => x.id == courseId);
+        if (c && c.title) return c.title;
+    }
+    return "Course Details";
+}
+
+function loadCourses(){
+    breadcrumbPath = ["Selection Way"];
     updateBreadcrumbUI();
     
     if (allCoursesData.length === 0) {
@@ -85,6 +155,7 @@ function loadCourses(isBack = false){
         .then(res=>res.json())
         .then(data=>{
             allCoursesData = data;
+            data.forEach(c => { courseNamesCache[c.id] = c.title; });
             renderCoursesView();
         })
         .catch(() => document.getElementById("content").innerHTML = "<h3 style='padding:20px'>Error loading data.</h3>");
@@ -166,10 +237,8 @@ function renderFilteredCards() {
             timingHtml += `</ul>`;
         }
 
-        let animDelay = (index * 0.05) + "s";
-
         html += `
-        <div class="card nav-card" style="animation-delay: ${animDelay};" onclick="loadSubjects('${c.id}', '${escapeStr(title)}')">
+        <div class="card nav-card" onclick="window.location.hash = '/course/${c.id}'">
             <div class="banner-wrapper">
                 <img src="${bannerImg}" loading="lazy" class="course-banner" alt="Banner" onerror="this.src='${defaultBanner}'">
                 <span class="category-badge">${catName}</span>
@@ -188,13 +257,10 @@ function renderFilteredCards() {
     grid.innerHTML = html;
 }
 
-function loadSubjects(courseId, courseName, isBack = false){
-    if(!isBack) {
-        historyStack.push(() => loadCourses(true));
-        breadcrumbPath.push(courseName);
-    }
+function loadSubjects(courseId) {
+    let courseName = getCourseName(courseId);
+    breadcrumbPath = ["Selection Way", courseName];
     updateBreadcrumbUI();
-    currentCourse = courseId;
     showSkeletons();
 
     fetch(`/api/course/${courseId}`)
@@ -210,12 +276,9 @@ function loadSubjects(courseId, courseName, isBack = false){
             subjects[sec.sectionName].topics.push(t);
         });
 
-        // ==========================================
-        // MOCK TEST CARD ADDED RIGHT AFTER PDF FOLDER
-        // ==========================================
         let html = `
         <div class="grid">
-            <div class="card nav-card" onclick="loadAllPdfs('${courseId}')" style="border: 2px dashed #4ade80;">
+            <div class="card nav-card" onclick="window.location.hash = '/course/${courseId}/pdfs'" style="border: 2px dashed #4ade80;">
                 <div class="card-body" style="align-items:center; text-align:center; justify-content:center;">
                     <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
                     <h3 style="margin:0 0 5px 0; color:#4ade80;">All Course PDFs</h3>
@@ -223,7 +286,7 @@ function loadSubjects(courseId, courseName, isBack = false){
                 </div>
             </div>
             
-            <div class="card nav-card" onclick="loadMockTests('${courseId}')" style="border: 2px dashed #38bdf8;">
+            <div class="card nav-card" onclick="window.location.hash = '/course/${courseId}/mock-tests'" style="border: 2px dashed #38bdf8;">
                 <div class="card-body" style="align-items:center; text-align:center; justify-content:center;">
                     <div style="font-size: 40px; margin-bottom: 10px;">📝</div>
                     <h3 style="margin:0 0 5px 0; color:#38bdf8;">Mock Tests</h3>
@@ -237,7 +300,7 @@ function loadSubjects(courseId, courseName, isBack = false){
             let facultyImg = getProxiedImage(s.image) || defaultImg;
             
             html += `
-            <div class="card nav-card" onclick='loadTopics(${JSON.stringify(s.topics).replace(/'/g, "&apos;")}, "${escapeStr(sub)}")'>
+            <div class="card nav-card" onclick="window.location.hash = '/course/${courseId}/subject/${encodeURIComponent(sub)}'">
                 <div class="card-body" style="align-items:center; text-align:center;">
                     <img src="${facultyImg}" loading="lazy" class="subject-img" onerror="this.src='${defaultImg}'">
                     <h3 style="margin:0 0 5px 0; color:var(--text-main);">${sub}</h3>
@@ -250,12 +313,10 @@ function loadSubjects(courseId, courseName, isBack = false){
     });
 }
 
-function loadAllPdfs(courseId, isBack = false) {
-    if(!isBack) {
-        let prevCourseName = breadcrumbPath[1]; 
-        historyStack.push(() => loadSubjects(currentCourse, prevCourseName, true));
-        breadcrumbPath.push("All PDFs");
-    }
+function loadAllPdfs(courseId, specificSection = null) {
+    let courseName = getCourseName(courseId);
+    breadcrumbPath = ["Selection Way", courseName, "All PDFs"];
+    if (specificSection) breadcrumbPath.push(specificSection);
     updateBreadcrumbUI();
     showSkeletons();
 
@@ -273,11 +334,32 @@ function loadAllPdfs(courseId, isBack = false) {
             }
         });
 
+        if (specificSection) {
+            let pdfs = groupedPdfs[specificSection] || [];
+            let html = `<div class="grid">`;
+            pdfs.forEach(pdf => {
+                html += `
+                <div class="card video-card">
+                    <div class="card-content">
+                        <h4 style="margin:0 0 12px 0; color:var(--text-main); line-height:1.4;">📄 ${escapeStr(pdf.title)}</h4>
+                        <div class="course-meta">👨‍🏫 <b>Teacher:</b> ${escapeStr(pdf.teacherName) || "Unknown"}</div>
+                        <div class="course-meta">🏷️ <b>Topic:</b> ${escapeStr(pdf.topic?.topicName) || "General"}</div>
+                        <div class="course-meta" style="margin-bottom:15px">📅 <b>Date:</b> ${(pdf.createdAt || "").split("T")[0] || "N/A"}</div>
+                    </div>
+                    <div class="card-actions">
+                        <button onclick="window.open('${pdf.uploadPdf}', '_blank')" class="pdf-btn primary-pdf-btn">Open PDF</button>
+                    </div>
+                </div>`;
+            });
+            html += `</div>`;
+            document.getElementById("content").innerHTML = html || "<h3 style='padding:20px'>No PDFs found.</h3>";
+            return;
+        }
+
         let html = `<div class="grid">`;
         for(let sec in groupedPdfs) {
-            let encodedData = encodeURIComponent(JSON.stringify(groupedPdfs[sec]));
             html += `
-            <div class="card nav-card" onclick="showGroupedPdfs('${encodedData}', '${escapeStr(sec)}')">
+            <div class="card nav-card" onclick="window.location.hash = '/course/${courseId}/pdfs/${encodeURIComponent(sec)}'">
                 <div class="card-body">
                     <h3 style="margin:0; color:var(--accent);">📂 ${sec}</h3>
                     <p class="course-meta" style="margin-top:10px">${groupedPdfs[sec].length} PDFs available</p>
@@ -289,67 +371,45 @@ function loadAllPdfs(courseId, isBack = false) {
     });
 }
 
-function showGroupedPdfs(encodedPdfs, secName) {
-    let pdfs = JSON.parse(decodeURIComponent(encodedPdfs));
-    let savedHtml = document.getElementById("content").innerHTML;
-    historyStack.push(() => {
-        updateBreadcrumbUI();
-        document.getElementById("content").innerHTML = savedHtml;
-    });
-    breadcrumbPath.push(secName);
-    updateBreadcrumbUI();
-    
-    let html = `<div class="grid">`;
-    pdfs.forEach(pdf => {
-        html += `
-        <div class="card video-card">
-            <div class="card-content">
-                <h4 style="margin:0 0 12px 0; color:var(--text-main); line-height:1.4;">📄 ${escapeStr(pdf.title)}</h4>
-                <div class="course-meta">👨‍🏫 <b>Teacher:</b> ${escapeStr(pdf.teacherName) || "Unknown"}</div>
-                <div class="course-meta">🏷️ <b>Topic:</b> ${escapeStr(pdf.topic?.topicName) || "General"}</div>
-                <div class="course-meta" style="margin-bottom:15px">📅 <b>Date:</b> ${(pdf.createdAt || "").split("T")[0] || "N/A"}</div>
-            </div>
-            <div class="card-actions">
-                <button onclick="window.open('${pdf.uploadPdf}', '_blank')" class="pdf-btn primary-pdf-btn">Open PDF</button>
-            </div>
-        </div>`;
-    });
-    html += `</div>`;
-    document.getElementById("content").innerHTML = html;
-}
-
-function loadTopics(topics, subjectName, isBack = false){
-    if(!isBack) {
-        let prevCourseName = breadcrumbPath[1];
-        historyStack.push(() => loadSubjects(currentCourse, prevCourseName, true));
-        breadcrumbPath.push(subjectName);
-    }
-    updateBreadcrumbUI();
-    let html=`<div class="grid">`;
-    topics.forEach(t=>{
-        html += `<div class="card nav-card" onclick="loadClasses('${t.topicId}','${escapeStr(t.topicName)}')">
-                    <div class="card-body">
-                        <h3 style="margin:0; color:var(--text-main);">📘 ${t.topicName}</h3>
-                        <p class="course-meta" style="margin-top:10px">Total Classes: <b>${t.totalClasses || 0}</b></p>
-                    </div>
-                 </div>`;
-    });
-    html += `</div>`;
-    document.getElementById("content").innerHTML = html;
-}
-
-function loadClasses(topicId, topicName, isBack = false){
-    if(!isBack) {
-        let savedTopicsHtml = document.getElementById("content").innerHTML;
-        historyStack.push(() => {
-            updateBreadcrumbUI();
-            document.getElementById("content").innerHTML = savedTopicsHtml; 
-        });
-        breadcrumbPath.push(topicName);
-    }
+function loadTopicsForSubject(courseId, subjectName) {
+    let courseName = getCourseName(courseId);
+    breadcrumbPath = ["Selection Way", courseName, subjectName];
     updateBreadcrumbUI();
     showSkeletons();
-    fetch(`/api/classes/${currentCourse}/${topicId}`)
+    
+    fetch(`/api/course/${courseId}`)
+    .then(res=>res.json())
+    .then(data=>{
+        let topics = [];
+        data.forEach(t=>{
+            if(!t.sections || t.sections.length === 0) return;
+            let sec=t.sections[0];
+            if(sec.sectionName === subjectName) {
+                topics.push(t);
+            }
+        });
+        
+        let html=`<div class="grid">`;
+        topics.forEach(t=>{
+            html += `<div class="card nav-card" onclick="window.location.hash = '/course/${courseId}/subject/${encodeURIComponent(subjectName)}/topic/${t.topicId}'">
+                        <div class="card-body">
+                            <h3 style="margin:0; color:var(--text-main);">📘 ${t.topicName}</h3>
+                            <p class="course-meta" style="margin-top:10px">Total Classes: <b>${t.totalClasses || 0}</b></p>
+                        </div>
+                     </div>`;
+        });
+        html += `</div>`;
+        document.getElementById("content").innerHTML = html || "<h3 style='padding:20px'>No topics found.</h3>";
+    });
+}
+
+function loadClassesForTopic(courseId, subjectName, topicId, topicName) {
+    let courseName = getCourseName(courseId);
+    breadcrumbPath = ["Selection Way", courseName, subjectName, topicName];
+    updateBreadcrumbUI();
+    showSkeletons();
+    
+    fetch(`/api/classes/${courseId}/${topicId}`)
     .then(res=>res.json())
     .then(data=>{
         let subtopics={}; let hasSub=false;
@@ -363,7 +423,7 @@ function loadClasses(topicId, topicName, isBack = false){
             html = `<div class="grid">`;
             for(let sub in subtopics){
                 html += `
-                <div class="card nav-card" onclick='showSubtopic(${JSON.stringify(subtopics[sub]).replace(/'/g, "&apos;")}, "${escapeStr(sub)}")'>
+                <div class="card nav-card" onclick="window.location.hash = '/course/${courseId}/subject/${encodeURIComponent(subjectName)}/topic/${topicId}/sub/${encodeURIComponent(sub)}'">
                     <div class="card-body">
                         <h3 style="margin:0; color:var(--accent);">📂 ${sub}</h3>
                         <p class="course-meta" style="margin-top:10px">${subtopics[sub].length} classes inside</p>
@@ -376,15 +436,18 @@ function loadClasses(topicId, topicName, isBack = false){
     });
 }
 
-function showSubtopic(classes, name){
-    let savedClassesHtml = document.getElementById("content").innerHTML;
-    historyStack.push(() => {
-        updateBreadcrumbUI();
-        document.getElementById("content").innerHTML = savedClassesHtml;
-    });
-    breadcrumbPath.push(name);
+function loadSubtopicClasses(courseId, subjectName, topicId, subName) {
+    let courseName = getCourseName(courseId);
+    breadcrumbPath = ["Selection Way", courseName, subjectName, "Topic", subName];
     updateBreadcrumbUI();
-    document.getElementById("content").innerHTML = renderClasses(classes);
+    showSkeletons();
+    
+    fetch(`/api/classes/${courseId}/${topicId}`)
+    .then(res=>res.json())
+    .then(data=>{
+        let subData = data.filter(cls => cls.subTopic?.subTopicName === subName);
+        document.getElementById("content").innerHTML = renderClasses(subData) || "<h3 style='padding:20px'>No classes found.</h3>";
+    });
 }
 
 function renderClasses(data){
@@ -410,6 +473,53 @@ function renderClasses(data){
     });
     html += `</div>`;
     return html;
+}
+
+// --- MOCK TEST LOGIC ---
+function loadMockTests(courseId) {
+    let courseName = getCourseName(courseId);
+    breadcrumbPath = ["Selection Way", courseName, "Mock Tests"];
+    updateBreadcrumbUI();
+    showSkeletons();
+
+    fetch(`/api/mock-tests/${courseId}`)
+    .then(res => res.json())
+    .then(data => {
+        if(data.state !== 200 || !data.data || !data.data.topic) {
+            document.getElementById("content").innerHTML = "<h3 style='padding:20px'>No mock tests available for this batch.</h3>";
+            return;
+        }
+
+        let html = `<div class="grid">`;
+        
+        data.data.topic.forEach(topic => {
+            let seriesHtml = '';
+            topic.series.forEach(test => {
+                seriesHtml += `
+                    <button onclick="window.open('/test/${test.series_id}', '_blank')" 
+                            class="btn-sm" 
+                            style="margin-top:8px; width:100%; display:block; text-align:left; background: var(--bg-main); border: 1px solid var(--border-color);">
+                        📝 ${escapeStr(test.series_name)}
+                    </button>`;
+            });
+
+            html += `
+            <div class="card nav-card" style="cursor:default;">
+                <div class="card-body">
+                    <h3 style="margin:0; color:var(--accent); border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                        📊 ${escapeStr(topic.topic_name)}
+                    </h3>
+                    <div style="margin-top:10px; max-height:250px; overflow-y:auto; padding-right:5px;">
+                        ${seriesHtml}
+                    </div>
+                </div>
+            </div>`;
+        });
+        
+        html += `</div>`;
+        document.getElementById("content").innerHTML = html;
+    })
+    .catch(() => document.getElementById("content").innerHTML = "<h3 style='padding:20px'>Error loading mock tests.</h3>");
 }
 
 // --- VIDEO PLAYER LOGIC ---
@@ -461,7 +571,6 @@ function openVideoPlayer(recordings, defaultLink, title) {
     }
 
     let safeRecordings = recordings.filter(r => r.url && r.url.includes('.mp4'));
-    
     let video720 = safeRecordings.find(r => r.quality && r.quality.includes('720'));
     currentActiveVideoUrl = video720 ? video720.url : (defaultLink || (safeRecordings.length > 0 ? safeRecordings[0].url : ""));
 
@@ -521,14 +630,13 @@ function openVideoPlayer(recordings, defaultLink, title) {
     if (isM3u8 && typeof Hls !== 'undefined' && Hls.isSupported()) {
         const hls = new Hls({
             xhrSetup: function(xhr) {
-                xhr.withCredentials = false; // Prevents CORS preflight failures
+                xhr.withCredentials = false;
             }
         });
         hls.loadSource(proxiedInitialUrl);
         hls.attachMedia(currentVideoElement);
         currentVideoElement.hls = hls;
         
-        // Auto-play when ready
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
             currentVideoElement.play().catch(e => console.log("Autoplay prevented by browser", e));
         });
@@ -610,7 +718,6 @@ function changeVideoQuality(newUrl, btn) {
 function closeModal() { 
     if(currentVideoElement) {
         currentVideoElement.pause();
-        // Destroy HLS instance when modal is closed to free memory and stop background downloading
         if (currentVideoElement.hls) {
             currentVideoElement.hls.destroy();
             delete currentVideoElement.hls;
@@ -630,67 +737,6 @@ window.onclick = function(e) {
     } 
 }
 
-function goBack(){
-    if(historyStack.length > 0) {
-        let prevAction = historyStack.pop();
-        breadcrumbPath.pop(); 
-        prevAction();         
-    } else {
-        loadCourses();
-    }
-}
-// --- MOCK TEST LOGIC ---
-function loadMockTests(courseId, isBack = false) {
-    if(!isBack) {
-        let prevCourseName = breadcrumbPath[1]; 
-        historyStack.push(() => loadSubjects(currentCourse, prevCourseName, true));
-        breadcrumbPath.push("Mock Tests");
-    }
-    updateBreadcrumbUI();
-    showSkeletons();
-
-    fetch(`/api/mock-tests/${courseId}`)
-    .then(res => res.json())
-    .then(data => {
-        if(data.state !== 200 || !data.data || !data.data.topic) {
-            document.getElementById("content").innerHTML = "<h3 style='padding:20px'>No mock tests available for this batch.</h3>";
-            return;
-        }
-
-        let html = `<div class="grid">`;
-        
-        // Loop through the topics (Percentage, Ratios and Proportion, etc.)
-        data.data.topic.forEach(topic => {
-            let seriesHtml = '';
-            
-            // Generate a button for each test in the series
-            topic.series.forEach(test => {
-                seriesHtml += `
-                    <button onclick="window.open('/test/${test.series_id}', '_blank')" 
-                            class="btn-sm" 
-                            style="margin-top:8px; width:100%; display:block; text-align:left; background: var(--bg-main); border: 1px solid var(--border-color);">
-                        📝 ${escapeStr(test.series_name)}
-                    </button>`;
-            });
-
-            html += `
-            <div class="card nav-card" style="cursor:default;">
-                <div class="card-body">
-                    <h3 style="margin:0; color:var(--accent); border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-                        📊 ${escapeStr(topic.topic_name)}
-                    </h3>
-                    <div style="margin-top:10px; max-height:250px; overflow-y:auto; padding-right:5px;">
-                        ${seriesHtml}
-                    </div>
-                </div>
-            </div>`;
-        });
-        
-        html += `</div>`;
-        document.getElementById("content").innerHTML = html;
-    })
-    .catch(() => document.getElementById("content").innerHTML = "<h3 style='padding:20px'>Error loading mock tests.</h3>");
-}
 document.addEventListener('keydown', function(e) {
     if (!currentVideoElement) return; 
     
@@ -712,5 +758,3 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
-
-loadCourses();
