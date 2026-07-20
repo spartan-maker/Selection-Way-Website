@@ -793,11 +793,27 @@ function showPlatformSelection() {
     breadcrumbPath = ["Select Platform"];
     updateBreadcrumbUI();
     let html = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:60vh; text-align:center;">
-            <h2 style="margin-bottom: 20px; color: var(--text-main);">Choose Your Platform</h2>
-            <div style="display:flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
-                <button onclick="setPlatform('selectionway')" style="padding: 15px 30px; font-size: 1.2rem; background: #38bdf8; border-radius: 8px;">Selection Way</button>
-                <button onclick="setPlatform('topperswisdom')" style="padding: 15px 30px; font-size: 1.2rem; background: #a855f7; border-radius: 8px;">Toppers Wisdom</button>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:70vh; text-align:center; padding: 20px;">
+            <h2 style="margin-bottom: 10px; color: var(--text-main); font-size: 2.5rem; font-weight: 700;">Welcome Back</h2>
+            <p style="color: var(--text-muted); margin-bottom: 40px; font-size: 1.1rem;">Choose your learning platform to continue</p>
+            <div style="display:flex; gap: 30px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 800px;">
+                
+                <div onclick="setPlatform('selectionway')" class="card nav-card" style="flex: 1; min-width: 280px; padding: 40px 20px; text-align: center; background: linear-gradient(145deg, var(--bg-card), var(--bg-main)); border: 2px solid rgba(56, 189, 248, 0.3); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <div style="width: 80px; height: 80px; background: rgba(56, 189, 248, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #38bdf8;">
+                        🎯
+                    </div>
+                    <h3 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">Selection Way</h3>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem;">Access standard courses & tests</p>
+                </div>
+
+                <div onclick="setPlatform('topperswisdom')" class="card nav-card" style="flex: 1; min-width: 280px; padding: 40px 20px; text-align: center; background: linear-gradient(145deg, var(--bg-card), var(--bg-main)); border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                    <div style="width: 80px; height: 80px; background: rgba(168, 85, 247, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: #a855f7;">
+                        👑
+                    </div>
+                    <h3 style="margin: 0; font-size: 1.5rem; color: var(--text-main);">Toppers Wisdom</h3>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem;">Premium curated study material</p>
+                </div>
+
             </div>
         </div>
     `;
