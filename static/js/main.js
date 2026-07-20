@@ -154,9 +154,11 @@ function loadCourses(){
     
     if (allCoursesData.length === 0) {
         showSkeletons();
+        let navId = currentNavId;
         fetch("/api/courses")
         .then(res=>res.json())
         .then(data=>{
+            if (navId !== currentNavId) return;
             allCoursesData = data;
             data.forEach(c => { courseNamesCache[c.id] = c.title; });
             renderCoursesView();
@@ -266,9 +268,11 @@ function loadSubjects(courseId) {
     updateBreadcrumbUI();
     showSkeletons();
 
+    let navId = currentNavId;
     fetch(`/api/course/${courseId}`)
     .then(res=>res.json())
     .then(data=>{
+        if (navId !== currentNavId) return;
         let subjects={};
         data.forEach(t=>{
             if(!t.sections || t.sections.length === 0) return;
@@ -323,9 +327,11 @@ function loadAllPdfs(courseId, specificSection = null) {
     updateBreadcrumbUI();
     showSkeletons();
 
+    let navId = currentNavId;
     fetch(`/api/pdfs/${courseId}`)
     .then(res => res.json())
     .then(data => {
+        if (navId !== currentNavId) return;
         let groupedPdfs = {};
         data.forEach(topicNode => {
             if(topicNode.pdfs && topicNode.pdfs.length > 0) {
@@ -380,9 +386,11 @@ function loadTopicsForSubject(courseId, subjectName) {
     updateBreadcrumbUI();
     showSkeletons();
     
+    let navId = currentNavId;
     fetch(`/api/course/${courseId}`)
     .then(res=>res.json())
     .then(data=>{
+        if (navId !== currentNavId) return;
         let topics = [];
         data.forEach(t=>{
             if(!t.sections || t.sections.length === 0) return;
@@ -412,9 +420,11 @@ function loadClassesForTopic(courseId, subjectName, topicId, topicName) {
     updateBreadcrumbUI();
     showSkeletons();
     
+    let navId = currentNavId;
     fetch(`/api/classes/${courseId}/${topicId}`)
     .then(res=>res.json())
     .then(data=>{
+        if (navId !== currentNavId) return;
         let subtopics={}; let hasSub=false;
         data.forEach(cls=>{
             let sub=cls.subTopic?.subTopicName;
@@ -445,9 +455,11 @@ function loadSubtopicClasses(courseId, subjectName, topicId, subName) {
     updateBreadcrumbUI();
     showSkeletons();
     
+    let navId = currentNavId;
     fetch(`/api/classes/${courseId}/${topicId}`)
     .then(res=>res.json())
     .then(data=>{
+        if (navId !== currentNavId) return;
         let subData = data.filter(cls => cls.subTopic?.subTopicName === subName);
         document.getElementById("content").innerHTML = renderClasses(subData) || "<h3 style='padding:20px'>No classes found.</h3>";
     });
@@ -485,9 +497,11 @@ function loadMockTests(courseId) {
     updateBreadcrumbUI();
     showSkeletons();
 
+    let navId = currentNavId;
     fetch(`/api/mock-tests/${courseId}`)
     .then(res => res.json())
     .then(data => {
+        if (navId !== currentNavId) return;
         if(data.state !== 200 || !data.data || !data.data.topic) {
             document.getElementById("content").innerHTML = "<h3 style='padding:20px'>No mock tests available for this batch.</h3>";
             return;
